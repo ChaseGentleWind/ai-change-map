@@ -1,0 +1,56 @@
+default_provider: openai
+
+providers:
+  gemini:
+    enabled: true
+    api_base: "${YUNWU_GEMINI_API_BASE}"
+    api_key: "${YUNWU_API_KEY}"
+    model: "gemini-2.5-flash-image"
+    timeout: 60
+
+  openai:
+    enabled: true
+    api_base: "${OPENAI_BASE_URL}"
+    api_key: "${OPENAI_API_KEY}"
+    model: "${OPENAI_MODEL}"
+    request_mode: chat_completions
+    size: "original"
+    timeout: 240
+
+  seededit:
+    enabled: true
+    api_base: "${YUNWU_API_BASE}"
+    api_key: "${YUNWU_API_KEY}"
+    model: "doubao-seededit-3-0-i2i-250628"
+    timeout: 120
+
+  tongyi:
+    enabled: false
+    api_base: "${TONGYI_API_BASE}"
+    api_key: "${DASHSCOPE_API_KEY}"
+    model: "wanx-image-edit-plus"
+
+  flux:
+    enabled: false
+    api_base: "${RELAY_API_BASE}"
+    api_key: "${FLUX_API_KEY}"
+    model: "flux-kontext-pro"
+
+routing:
+  text_edit: openai
+  watermark_remove: openai
+  reference_edit: openai
+  iterative_edit: openai
+  default: openai
+
+fallback:
+  enabled: false
+  chain:
+    gemini:
+      - openai
+    openai:
+      - gemini
+  max_retries: 1
+
+session:
+  max_context_turns: 10

@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+#app {
+  min-height: 100vh;
+  background-color: #F6F7FA;
+}
+
+@layer components {
+  .dk-card {
+    @apply bg-canvas rounded-card transition duration-200 ease-soft;
+  }
+
+  .dk-card-hover {
+    @apply dk-card hover:-translate-y-0.5 hover:shadow-hover;
+  }
+
+  .dk-section-title {
+    @apply text-base font-semibold text-ink;
+  }
+
+  .dk-tool-title {
+    @apply text-[16px] font-semibold text-ink leading-tight;
+  }
+
+  .dk-tool-desc {
+    @apply text-[12px] text-ink-muted leading-[18px];
+  }
+
+  .dk-btn-primary {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium
+           hover:bg-brand/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+  }
+
+  .dk-btn-ghost {
+    @apply inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-sm text-ink-soft
+           bg-transparent hover:bg-selected transition-colors;
+  }
+
+  .dk-input {
+    @apply w-full px-4 py-2 rounded-full bg-white border border-line text-sm text-ink
+           placeholder:text-ink-faint focus:outline-none focus:border-brand transition-colors;
+  }
+
+  .dk-textarea {
+    @apply w-full px-4 py-3 rounded-2xl bg-white border border-line text-sm text-ink
+           placeholder:text-ink-faint focus:outline-none focus:border-brand transition-colors resize-none;
+  }
+}
