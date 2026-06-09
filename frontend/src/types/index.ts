@@ -5,8 +5,28 @@ export interface EditRequest {
   session_id?: string
   parent_id?: number
   parent_result_index?: number
+  task_mode?: TaskMode
   provider?: string
   output_count?: number
+}
+
+export type TaskMode = 'general' | 'local_edit' | 'text_layer'
+
+export interface TextLayer {
+  id: string
+  text: string
+  x: number
+  y: number
+  fontSize: number
+  color: string
+}
+
+export interface EditMetadata {
+  task_mode: TaskMode
+  text_layers?: TextLayer[]
+  mask?: {
+    brushSize: number
+  }
 }
 
 export interface EditResponse {
@@ -53,6 +73,8 @@ export interface EditRecord {
   parent_id?: number
   main_image_url: string
   reference_urls?: string[]
+  mask_url?: string
+  edit_metadata?: EditMetadata
   instruction: string
   task_type?: string
   provider: string

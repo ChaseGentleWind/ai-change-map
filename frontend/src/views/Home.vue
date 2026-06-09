@@ -2,7 +2,10 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { editImage, getProviders, getSession } from '@/api'
-import type { ProviderInfo, EditRecord } from '@/types'
+import ImageCanvasEditor from '@/components/ImageCanvasEditor.vue'
+import TaskModePanel from '@/components/TaskModePanel.vue'
+import TextLayerPanel from '@/components/TextLayerPanel.vue'
+import type { EditMetadata, ProviderInfo, EditRecord, TaskMode, TextLayer } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,6 +18,11 @@ const referenceImagePreviews = ref<string[]>([])
 const instruction = ref('')
 const selectedProvider = ref<string>('')
 const outputCount = ref(1)
+const taskMode = ref<TaskMode>('general')
+const textLayers = ref<TextLayer[]>([])
+const brushSize = ref(48)
+const maskPreviewUrl = ref('')
+const canvasEditor = ref<InstanceType<typeof ImageCanvasEditor> | null>(null)
 
 // 会话状态
 const sessionId = ref<string>('')
@@ -72,7 +80,9 @@ const isDragging = ref(false)
 
 // 计算属性
 const canSubmit = computed(() => {
-  return mainImage.value && instruction.value.trim() && !loading.value && !sessionLoading.value
+  const hasInstruction = instruction.value.trim().length > 0
+  const hasTextLayer = taskMode.value === 'text_layer' && textLayers.value.length > 0
+  return mainImage.value && (hasInstruction || hasTextLayer) && !loading.value && !sessionLoading.value
 })
 
 // 加载 providers
@@ -116,6 +126,11 @@ async function loadSessionDetail(id: string) {
     chatHistory.value = data.records
 
     const lastRecord = data.records[data.records.length - 1]
+    const metadata = lastRecord?.edit_metadata
+    taskMode.value = metadata?.task_mode || 'general'
+    textLayers.value = metadata?.text_layers || []
+    brushSize.value = metadata?.mask?.brushSize || 48
+    maskPreviewUrl.value = lastRecord?.mask_url || ''
     currentParentId.value = lastRecord?.id ?? null
     currentParentResultIndex.value = 0
   } catch (e: any) {
@@ -148,6 +163,7 @@ function handleMainImageChange(event: Event) {
 }
 
 function setMainImage(file: File) {
+  sessionLoadToken++
   mainImage.value = file
   const reader = new FileReader()
   reader.onload = (e) => {
@@ -158,6 +174,13 @@ function setMainImage(file: File) {
   chatHistory.value = []
   currentParentId.value = null
   currentParentResultIndex.value = 0
+  taskMode.value = 'general'
+  textLayers.value = []
+  maskPreviewUrl.value = ''
+  void canvasEditor.value?.clearMask()
+  if (route.query.sessionId) {
+    void router.replace({ path: '/' })
+  }
 }
 
 // 处理参考图上传
@@ -208,13 +231,29 @@ async function submitEdit() {
   startTimer()
 
   try {
+    const metadata: EditMetadata = {
+      task_mode: taskMode.value,
+      text_layers: textLayers.value,
+      mask: { brushSize: brushSize.value }
+    }
+    const mainImageForSubmit = taskMode.value === 'text_layer' && canvasEditor.value
+      ? await canvasEditor.value.exportCompositeImage()
+      : mainImage.value!
+    const maskImage = taskMode.value === 'local_edit' && canvasEditor.value
+      ? await canvasEditor.value.exportMaskImage()
+      : null
+    const instructionText = instruction.value.trim() || '修改文字图层'
+
     const result = await editImage(
-      mainImage.value!,
-      instruction.value,
+      mainImageForSubmit,
+      instructionText,
       {
         sessionId: sessionId.value || undefined,
         parentId: currentParentId.value || undefined,
         parentResultIndex: currentParentId.value ? currentParentResultIndex.value : undefined,
+        taskMode: taskMode.value,
+        maskImage: maskImage || undefined,
+        editMetadata: metadata,
         provider: selectedProvider.value || undefined,
         outputCount: outputCount.value,
         referenceImages: referenceImages.value.length > 0 ? referenceImages.value : undefined
@@ -229,12 +268,14 @@ async function submitEdit() {
       id: result.record_id,
       session_id: result.session_id,
       main_image_url: mainImagePreview.value,
-      instruction: instruction.value,
+      instruction: instructionText,
       task_type: result.task_type,
       provider: result.provider,
       model: result.model,
       fallback_used: result.fallback_used,
       result_urls: result.results,
+      mask_url: maskImage ? URL.createObjectURL(maskImage) : undefined,
+      edit_metadata: metadata,
       status: 'completed',
       cost: result.cost,
       duration_ms: result.duration_ms,
@@ -242,6 +283,17 @@ async function submitEdit() {
     })
 
     instruction.value = ''
+    if (result.results[0]) {
+      try {
+        mainImage.value = await fileFromUrl(result.results[0], 'latest_result.png')
+        mainImagePreview.value = result.results[0]
+      } catch {
+        mainImage.value = mainImageForSubmit
+      }
+    }
+    maskPreviewUrl.value = ''
+    textLayers.value = []
+    void canvasEditor.value?.clearMask()
 
   } catch (e: any) {
     error.value = e.message || '编辑失败，请重试'
@@ -252,9 +304,22 @@ async function submitEdit() {
 }
 
 // 从历史某张结果图继续编辑
-function continueFromRecord(record: EditRecord, resultIndex: number = 0) {
+async function continueFromRecord(record: EditRecord, resultIndex: number = 0) {
   currentParentId.value = record.id
   currentParentResultIndex.value = resultIndex
+  const selectedUrl = record.result_urls?.[resultIndex]
+  if (selectedUrl) {
+    try {
+      mainImage.value = await fileFromUrl(selectedUrl, 'selected_result.png')
+      mainImagePreview.value = selectedUrl
+      textLayers.value = record.edit_metadata?.text_layers || []
+      taskMode.value = record.edit_metadata?.task_mode || taskMode.value
+      brushSize.value = record.edit_metadata?.mask?.brushSize || brushSize.value
+      maskPreviewUrl.value = record.mask_url || ''
+    } catch (e) {
+      error.value = '加载选中的结果图失败'
+    }
+  }
   const index = chatHistory.value.findIndex(r => r.id === record.id)
   if (index >= 0) {
     chatHistory.value = chatHistory.value.slice(0, index + 1)
@@ -281,6 +346,10 @@ function reset() {
   chatHistory.value = []
   currentParentId.value = null
   currentParentResultIndex.value = 0
+  taskMode.value = 'general'
+  textLayers.value = []
+  brushSize.value = 48
+  maskPreviewUrl.value = ''
   error.value = ''
   if (route.query.sessionId) {
     void router.replace({ path: '/' })
@@ -359,10 +428,13 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
             </div>
 
             <div v-else class="relative rounded-card overflow-hidden bg-white">
-              <img
-                :src="mainImagePreview"
-                class="w-full object-contain max-h-[320px]"
-                alt="主图预览"
+              <ImageCanvasEditor
+                ref="canvasEditor"
+                :image-src="mainImagePreview"
+                :task-mode="taskMode"
+                :text-layers="textLayers"
+                :brush-size="brushSize"
+                :mask-src="maskPreviewUrl"
               />
               <button
                 class="absolute top-3 right-3 bg-white/90 backdrop-blur w-7 h-7 rounded-full flex items-center justify-center text-ink-soft hover:text-ink shadow-sm"
@@ -373,6 +445,21 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
                 </svg>
               </button>
+            </div>
+
+            <div v-if="mainImagePreview && taskMode === 'local_edit'" class="mt-3 rounded-xl border border-line bg-white p-3">
+              <div class="flex items-center justify-between gap-3 mb-2">
+                <span class="text-[12px] font-medium text-ink-soft">涂抹需要修改的区域</span>
+                <div class="flex items-center gap-1">
+                  <button type="button" class="dk-btn-ghost text-[12px]" @click="canvasEditor?.undoMask()">撤销</button>
+                  <button type="button" class="dk-btn-ghost text-[12px]" @click="maskPreviewUrl = ''; canvasEditor?.clearMask()">清空</button>
+                </div>
+              </div>
+              <label class="flex items-center gap-3 text-[12px] text-ink-muted">
+                画笔
+                <input v-model.number="brushSize" type="range" min="12" max="140" class="flex-1" />
+                <span class="w-8 text-right">{{ brushSize }}</span>
+              </label>
             </div>
 
             <!-- 参考图缩略图条（内联在主图卡内） -->
@@ -417,8 +504,15 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
             </div>
           </section>
 
+          <TaskModePanel v-model="taskMode" />
+
+          <TextLayerPanel
+            v-if="taskMode === 'text_layer'"
+            v-model="textLayers"
+          />
+
           <!-- 模型卡：卡片式选择器 -->
-          <section class="dk-card p-5">
+          <section v-if="taskMode !== 'text_layer'" class="dk-card p-5">
             <div class="flex items-center justify-between mb-3">
               <h2 class="dk-section-title">选择模型</h2>
               <span class="text-[12px] text-ink-faint">不同模型擅长不同任务</span>
@@ -530,7 +624,10 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
 
             <!-- 提交栏：生成数量 + 提交按钮内联 -->
             <div class="mt-4 flex items-center gap-3">
-              <div class="flex items-center gap-1 bg-white border border-line rounded-lg p-0.5">
+              <div
+                v-if="taskMode !== 'text_layer'"
+                class="flex items-center gap-1 bg-white border border-line rounded-lg p-0.5"
+              >
                 <button
                   v-for="n in [1, 2, 4]"
                   :key="n"
@@ -559,7 +656,7 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
                   </svg>
                   生成中 · {{ elapsedSeconds }}s
                 </span>
-                <span v-else>生成编辑结果</span>
+                <span v-else>{{ taskMode === 'text_layer' ? '保存文字结果' : '生成编辑结果' }}</span>
               </button>
             </div>
 

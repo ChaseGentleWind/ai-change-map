@@ -27,6 +27,7 @@ class EditRecord(Base):
     main_image_url = Column(Text, nullable=False)   # 本轮编辑的主图（可能是上一轮结果）
     reference_urls = Column(Text, nullable=True)    # 参考图路径 JSON 数组
     mask_url = Column(Text, nullable=True)          # mask 路径
+    edit_metadata = Column(Text, nullable=True)     # 前端编辑状态 JSON
     instruction = Column(Text, nullable=False)      # 用户指令
 
     # 路由信息

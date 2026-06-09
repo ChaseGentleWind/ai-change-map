@@ -59,6 +59,8 @@ class RecordSchema(BaseModel):
     parent_id: Optional[int]
     main_image_url: str
     reference_urls: Optional[List[str]]
+    mask_url: Optional[str] = None
+    edit_metadata: Optional[Dict[str, Any]] = None
     instruction: str
     task_type: Optional[str]
     provider: str

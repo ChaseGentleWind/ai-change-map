@@ -75,7 +75,7 @@ class OpenAIProvider(ImageEditorProvider):
     def capabilities(self) -> Capabilities:
         return Capabilities(
             supports_multi_image=True,
-            supports_mask=False,
+            supports_mask=True,
             supports_chat=False,
             max_input_size_mb=50,
             max_output_count=10,
@@ -109,6 +109,8 @@ class OpenAIProvider(ImageEditorProvider):
 
         image_inputs = [_to_data_url(request.main_image)]
         image_inputs.extend(_to_data_url(image) for image in request.reference_images)
+        if request.mask:
+            image_inputs.append(_to_data_url(request.mask))
 
         payload = {
             "model": self.model,
@@ -168,7 +170,11 @@ class OpenAIProvider(ImageEditorProvider):
         )
         content = [{"type": "text", "text": prompt}]
 
-        for image in [request.main_image, *request.reference_images]:
+        input_images = [request.main_image, *request.reference_images]
+        if request.mask:
+            input_images.append(request.mask)
+
+        for image in input_images:
             content.append({
                 "type": "image_url",
                 "image_url": {"url": _to_data_url(image)},

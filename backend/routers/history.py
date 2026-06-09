@@ -108,6 +108,7 @@ async def get_session(
     for record in records:
         ref_urls = json.loads(record.reference_urls) if record.reference_urls else None
         result_urls = json.loads(record.result_urls) if record.result_urls else None
+        edit_metadata = json.loads(record.edit_metadata) if record.edit_metadata else None
 
         record_schemas.append(RecordSchema(
             id=record.id,
@@ -115,6 +116,8 @@ async def get_session(
             parent_id=record.parent_id,
             main_image_url=record.main_image_url,
             reference_urls=ref_urls,
+            mask_url=record.mask_url,
+            edit_metadata=edit_metadata,
             instruction=record.instruction,
             task_type=record.task_type,
             provider=record.provider,
@@ -168,6 +171,9 @@ async def delete_session(
             ref_urls = json.loads(record.reference_urls)
             for url in ref_urls:
                 delete_file(url)
+
+        if record.mask_url:
+            delete_file(record.mask_url)
 
         # 删除结果图
         if record.result_urls:

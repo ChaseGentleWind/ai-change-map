@@ -4,7 +4,9 @@ import type {
   EditResponse,
   ProvidersListResponse,
   SessionListResponse,
-  Session
+  Session,
+  EditMetadata,
+  TaskMode
 } from '@/types'
 
 const api = axios.create({
@@ -41,6 +43,9 @@ export async function editImage(
     sessionId?: string
     parentId?: number
     parentResultIndex?: number
+    taskMode?: TaskMode
+    maskImage?: File
+    editMetadata?: EditMetadata
     provider?: string
     outputCount?: number
     referenceImages?: File[]
@@ -58,6 +63,15 @@ export async function editImage(
   }
   if (options.parentResultIndex !== undefined) {
     formData.append('parent_result_index', String(options.parentResultIndex))
+  }
+  if (options.taskMode) {
+    formData.append('task_mode', options.taskMode)
+  }
+  if (options.maskImage) {
+    formData.append('mask_image', options.maskImage)
+  }
+  if (options.editMetadata) {
+    formData.append('edit_metadata', JSON.stringify(options.editMetadata))
   }
   if (options.provider) {
     formData.append('provider', options.provider)

@@ -10,7 +10,7 @@ from typing import List, Optional
 from database import get_db
 from models.database import EditSession, EditRecord
 from models.schemas import EditResponseSchema
-from providers import get_provider, EditRequest, TaskRouter
+from providers import get_provider, EditRequest, EditResponse, TaskRouter, TokenUsage
 from services.storage import save_upload, save_outputs, get_file_bytes
 from config import PROVIDERS_CONFIG
 
@@ -26,7 +26,10 @@ async def edit_image(
     parent_result_index: int = Form(0, description="父记录结果图索引"),
     provider: Optional[str] = Form(None, description="手动指定 provider"),
     output_count: int = Form(1, description="生成数量"),
+    task_mode: str = Form("general", description="任务模式"),
+    edit_metadata: Optional[str] = Form(None, description="前端编辑状态 JSON"),
     reference_images: List[UploadFile] = File(default=[], description="参考图"),
+    mask_image: Optional[UploadFile] = File(None, description="局部编辑 mask"),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -46,8 +49,13 @@ async def edit_image(
     for ref_img in reference_images:
         reference_bytes.append(await ref_img.read())
 
+    mask_bytes = await mask_image.read() if mask_image else None
+    task_mode = _normalize_task_mode(task_mode)
+    edit_metadata = _normalize_edit_metadata(edit_metadata, task_mode)
+    enhanced_instruction = _build_instruction(task_mode, instruction, bool(mask_bytes))
+
     # 如果有 parent_id，从数据库读取父记录的结果图作为主图
-    if parent_id:
+    if parent_id and task_mode != "text_layer":
         result = await db.execute(select(EditRecord).where(EditRecord.id == parent_id))
         parent_record = result.scalar_one_or_none()
         if not parent_record:
@@ -68,6 +76,7 @@ async def edit_image(
     # 保存上传的图片
     _, main_url = save_upload(main_image_bytes)
     ref_urls = [save_upload(ref, ".jpg")[1] for ref in reference_bytes]
+    mask_url = save_upload(mask_bytes, ".png")[1] if mask_bytes else None
 
     # 创建或获取会话
     if not session_id:
@@ -90,22 +99,26 @@ async def edit_image(
     # 智能路由选择 provider
     router_instance = TaskRouter(PROVIDERS_CONFIG["routing"])
     selected_provider, task_type = router_instance.select_provider(
-        instruction=instruction,
+        instruction=enhanced_instruction,
         has_reference_images=len(reference_bytes) > 0,
         has_parent=parent_id is not None,
         manual_provider=provider
     )
 
+    if task_mode != "general":
+        task_type = task_mode
+
     # 获取 provider 配置
     provider_config = PROVIDERS_CONFIG["providers"].get(selected_provider)
-    if not provider_config or not provider_config.get("enabled"):
+    if task_mode != "text_layer" and (not provider_config or not provider_config.get("enabled")):
         raise HTTPException(400, f"Provider '{selected_provider}' 不可用")
 
     # 构建编辑请求
     edit_request = EditRequest(
         main_image=main_image_bytes,
-        instruction=instruction,
+        instruction=enhanced_instruction,
         reference_images=reference_bytes,
+        mask=mask_bytes,
         output_count=output_count
     )
 
@@ -116,31 +129,35 @@ async def edit_image(
 
     # 调用 provider
     fallback_used = None
-    try:
-        provider_instance = get_provider(selected_provider, provider_config)
-        response = await provider_instance.edit(edit_request)
-    except Exception as e:
-        # 尝试 fallback
-        fallback_config = PROVIDERS_CONFIG.get("fallback", {})
-        if fallback_config.get("enabled"):
-            fallback_chain = fallback_config.get("chain", {}).get(selected_provider, [])
-            if fallback_chain:
-                fallback_provider = fallback_chain[0]
-                fallback_provider_config = PROVIDERS_CONFIG["providers"].get(fallback_provider)
-                if fallback_provider_config and fallback_provider_config.get("enabled"):
-                    try:
-                        fallback_instance = get_provider(fallback_provider, fallback_provider_config)
-                        response = await fallback_instance.edit(edit_request)
-                        fallback_used = selected_provider
-                        selected_provider = fallback_provider
-                    except Exception as fallback_error:
-                        raise HTTPException(500, f"编辑失败: {str(e)}, Fallback 也失败: {str(fallback_error)}")
+    if task_mode == "text_layer":
+        response = _local_text_layer_response(main_image_bytes)
+        selected_provider = "local"
+    else:
+        try:
+            provider_instance = get_provider(selected_provider, provider_config)
+            response = await provider_instance.edit(edit_request)
+        except Exception as e:
+            # 尝试 fallback
+            fallback_config = PROVIDERS_CONFIG.get("fallback", {})
+            if fallback_config.get("enabled"):
+                fallback_chain = fallback_config.get("chain", {}).get(selected_provider, [])
+                if fallback_chain:
+                    fallback_provider = fallback_chain[0]
+                    fallback_provider_config = PROVIDERS_CONFIG["providers"].get(fallback_provider)
+                    if fallback_provider_config and fallback_provider_config.get("enabled"):
+                        try:
+                            fallback_instance = get_provider(fallback_provider, fallback_provider_config)
+                            response = await fallback_instance.edit(edit_request)
+                            fallback_used = selected_provider
+                            selected_provider = fallback_provider
+                        except Exception as fallback_error:
+                            raise HTTPException(500, f"编辑失败: {str(e)}, Fallback 也失败: {str(fallback_error)}")
+                    else:
+                        raise HTTPException(500, f"编辑失败: {str(e)}")
                 else:
                     raise HTTPException(500, f"编辑失败: {str(e)}")
             else:
                 raise HTTPException(500, f"编辑失败: {str(e)}")
-        else:
-            raise HTTPException(500, f"编辑失败: {str(e)}")
 
     # 保存结果图
     result_urls = save_outputs(response.images, prefix=f"{session_id[:8]}")
@@ -157,6 +174,8 @@ async def edit_image(
         parent_id=parent_id,
         main_image_url=main_url,
         reference_urls=json.dumps(ref_urls) if ref_urls else None,
+        mask_url=mask_url,
+        edit_metadata=edit_metadata,
         instruction=instruction,
         task_type=task_type,
         provider=selected_provider,
@@ -191,4 +210,51 @@ async def edit_image(
         },
         cost=cost,
         duration_ms=duration_ms
+    )
+
+
+def _normalize_task_mode(task_mode: str) -> str:
+    """校验任务模式，避免前端传入未支持的分支。"""
+    allowed_modes = {"general", "local_edit", "text_layer"}
+    if task_mode not in allowed_modes:
+        raise HTTPException(400, "不支持的任务模式")
+    return task_mode
+
+
+def _normalize_edit_metadata(edit_metadata: Optional[str], task_mode: str) -> str:
+    """校验并补齐前端编辑状态。"""
+    if not edit_metadata:
+        return json.dumps({"task_mode": task_mode}, ensure_ascii=False)
+
+    try:
+        metadata = json.loads(edit_metadata)
+    except json.JSONDecodeError:
+        raise HTTPException(400, "edit_metadata 必须是合法 JSON")
+
+    if not isinstance(metadata, dict):
+        raise HTTPException(400, "edit_metadata 必须是 JSON 对象")
+
+    metadata["task_mode"] = task_mode
+    return json.dumps(metadata, ensure_ascii=False)
+
+
+def _build_instruction(task_mode: str, instruction: str, has_mask: bool) -> str:
+    """根据任务模式增强提示词。"""
+    if task_mode == "local_edit" and has_mask:
+        return (
+            f"{instruction}\n\n"
+            "请只修改遮罩图中白色区域对应的内容，遮罩黑色区域必须保持不变。"
+            "不要改变未选区的商品主体、背景、文字、构图、透视、光照和颜色。"
+        )
+    return instruction
+
+
+def _local_text_layer_response(image_bytes: bytes) -> EditResponse:
+    """文字图层已在前端合成，后端只保存合成结果。"""
+    return EditResponse(
+        images=[image_bytes],
+        usage=TokenUsage(),
+        provider="local",
+        model="canvas-text-layer",
+        raw_response={"local": True},
     )

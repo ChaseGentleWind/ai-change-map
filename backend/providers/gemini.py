@@ -15,7 +15,7 @@ class GeminiProvider(ImageEditorProvider):
     def capabilities(self) -> Capabilities:
         return Capabilities(
             supports_multi_image=True,
-            supports_mask=False,
+            supports_mask=True,
             supports_chat=True,
             max_input_size_mb=20,
             max_output_count=4
@@ -50,6 +50,15 @@ class GeminiProvider(ImageEditorProvider):
                 "inline_data": {
                     "mime_type": "image/jpeg",
                     "data": ref_b64
+                }
+            })
+
+        if request.mask:
+            mask_b64 = base64.b64encode(request.mask).decode('utf-8')
+            parts.append({
+                "inline_data": {
+                    "mime_type": "image/png",
+                    "data": mask_b64
                 }
             })
 
