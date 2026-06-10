@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from database import init_db
-from routers import edit, history, providers
+from routers import auth as auth_router, edit, history, providers
 from config import UPLOAD_DIR, OUTPUT_DIR
 
 
@@ -34,6 +34,7 @@ app.add_middleware(
 )
 
 # 注册路由
+app.include_router(auth_router.router)
 app.include_router(edit.router)
 app.include_router(history.router)
 app.include_router(providers.router)

@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
 
+from auth import get_current_user
 from database import get_db
-from models.database import EditSession, EditRecord
+from models.database import EditSession, EditRecord, User
 from models.schemas import EditResponseSchema
 from providers import get_provider, EditRequest, EditResponse, TaskRouter, TokenUsage
 from services.storage import save_upload, save_outputs, get_file_bytes
@@ -30,6 +31,7 @@ async def edit_image(
     edit_metadata: Optional[str] = Form(None, description="前端编辑状态 JSON"),
     reference_images: List[UploadFile] = File(default=[], description="参考图"),
     mask_image: Optional[UploadFile] = File(None, description="局部编辑 mask"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -56,7 +58,12 @@ async def edit_image(
 
     # 如果有 parent_id，从数据库读取父记录的结果图作为主图
     if parent_id and task_mode != "text_layer":
-        result = await db.execute(select(EditRecord).where(EditRecord.id == parent_id))
+        result = await db.execute(
+            select(EditRecord).where(
+                EditRecord.id == parent_id,
+                EditRecord.user_id == current_user.id,
+            )
+        )
         parent_record = result.scalar_one_or_none()
         if not parent_record:
             raise HTTPException(404, "父记录不存在")
@@ -72,6 +79,15 @@ async def edit_image(
         main_image_bytes = get_file_bytes(selected_parent_url)
         if not main_image_bytes:
             raise HTTPException(404, "父记录的结果图不存在")
+    elif parent_id:
+        result = await db.execute(
+            select(EditRecord).where(
+                EditRecord.id == parent_id,
+                EditRecord.user_id == current_user.id,
+            )
+        )
+        if not result.scalar_one_or_none():
+            raise HTTPException(404, "父记录不存在")
 
     # 保存上传的图片
     _, main_url = save_upload(main_image_bytes)
@@ -84,6 +100,7 @@ async def edit_image(
         # 创建新会话
         session = EditSession(
             id=session_id,
+            user_id=current_user.id,
             title=instruction[:20],  # 取前20字作为标题
             original_url=main_url
         )
@@ -91,7 +108,12 @@ async def edit_image(
         await db.commit()
     else:
         # 验证会话存在
-        result = await db.execute(select(EditSession).where(EditSession.id == session_id))
+        result = await db.execute(
+            select(EditSession).where(
+                EditSession.id == session_id,
+                EditSession.user_id == current_user.id,
+            )
+        )
         session = result.scalar_one_or_none()
         if not session:
             raise HTTPException(404, "会话不存在")
@@ -159,8 +181,13 @@ async def edit_image(
             else:
                 raise HTTPException(500, f"编辑失败: {str(e)}")
 
+    # 按用户选择的生成数量保存结果，避免兼容接口额外返回候选图导致前端多显示。
+    result_images = response.images[:output_count]
+    if not result_images:
+        raise HTTPException(500, "模型未返回可用图片")
+
     # 保存结果图
-    result_urls = save_outputs(response.images, prefix=f"{session_id[:8]}")
+    result_urls = save_outputs(result_images, prefix=f"{session_id[:8]}")
 
     # 计算耗时
     duration_ms = int((time.time() - start_time) * 1000)
@@ -171,6 +198,7 @@ async def edit_image(
     # 写入数据库
     record = EditRecord(
         session_id=session_id,
+        user_id=current_user.id,
         parent_id=parent_id,
         main_image_url=main_url,
         reference_urls=json.dumps(ref_urls) if ref_urls else None,

@@ -1,5 +1,30 @@
 // TypeScript 类型定义
 
+export interface User {
+  id: number
+  username: string
+  email: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface LoginRequest {
+  username_or_email: string
+  password: string
+}
+
+export interface RegisterRequest {
+  username: string
+  email: string
+  password: string
+}
+
+export interface AuthResponse {
+  access_token: string
+  token_type: string
+  user: User
+}
+
 export interface EditRequest {
   instruction: string
   session_id?: string
@@ -26,6 +51,7 @@ export interface EditMetadata {
   text_layers?: TextLayer[]
   mask?: {
     brushSize: number
+    feather: number
   }
 }
 

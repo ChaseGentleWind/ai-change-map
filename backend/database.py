@@ -40,8 +40,17 @@ async def _migrate_sqlite(conn):
     if not DATABASE_URL.startswith("sqlite"):
         return
 
+    result = await conn.execute(text("PRAGMA table_info(edit_sessions)"))
+    session_columns = {row[1] for row in result.fetchall()}
+
+    if "user_id" not in session_columns:
+        await conn.execute(text("ALTER TABLE edit_sessions ADD COLUMN user_id INTEGER"))
+
     result = await conn.execute(text("PRAGMA table_info(edit_records)"))
     columns = {row[1] for row in result.fetchall()}
 
     if "edit_metadata" not in columns:
         await conn.execute(text("ALTER TABLE edit_records ADD COLUMN edit_metadata TEXT"))
+
+    if "user_id" not in columns:
+        await conn.execute(text("ALTER TABLE edit_records ADD COLUMN user_id INTEGER"))

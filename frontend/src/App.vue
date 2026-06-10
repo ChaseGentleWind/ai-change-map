@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { RouterView, useRoute } from 'vue-router'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue'
+import { useAuth } from '@/stores/auth'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuth()
 
 const navItems = [
   { to: '/', label: '编辑', icon: 'edit' },
@@ -10,10 +13,18 @@ const navItems = [
 ]
 
 const activePath = computed(() => route.path)
+const isAuthPage = computed(() => route.path === '/login' || route.path === '/register')
+
+async function handleLogout() {
+  auth.logout()
+  await router.replace('/login')
+}
 </script>
 
 <template>
-  <div class="min-h-screen flex bg-canvas text-ink">
+  <RouterView v-if="isAuthPage" />
+
+  <div v-else class="min-h-screen flex bg-canvas text-ink">
     <!-- 左侧 80px 窄边栏 -->
     <aside class="w-20 shrink-0 bg-sidebar flex flex-col items-center py-4 sticky top-0 h-screen">
       <!-- Logo -->
@@ -40,6 +51,24 @@ const activePath = computed(() => route.path)
           <span class="text-[12px]">{{ item.label }}</span>
         </router-link>
       </nav>
+
+      <div class="mt-auto flex flex-col items-center gap-2">
+        <div
+          class="w-10 h-10 rounded-xl bg-white border border-line flex items-center justify-center text-[13px] font-semibold text-ink"
+          :title="auth.state.user?.email || auth.state.user?.username"
+        >
+          {{ auth.state.user?.username?.slice(0, 1).toUpperCase() || 'U' }}
+        </div>
+        <button
+          class="w-10 h-10 rounded-xl text-ink-muted hover:text-red-500 hover:bg-selected transition-colors flex items-center justify-center"
+          title="退出登录"
+          @click="handleLogout"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/>
+          </svg>
+        </button>
+      </div>
     </aside>
 
     <!-- 右侧主区 -->

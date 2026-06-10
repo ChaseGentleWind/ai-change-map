@@ -166,7 +166,7 @@ class OpenAIProvider(ImageEditorProvider):
 
         prompt = (
             f"{request.instruction}\n"
-            "Generate exactly one edited image asset. Return only the image result."
+            f"Generate exactly {request.output_count} edited image asset(s). Return only the image result."
         )
         content = [{"type": "text", "text": prompt}]
 

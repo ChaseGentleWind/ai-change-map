@@ -34,6 +34,9 @@ AINX_API_KEY = os.getenv("AINX_API_KEY", OPENAI_API_KEY)
 YUNWU_API_BASE = os.getenv("YUNWU_API_BASE", "https://yunwu.ai/v1")
 YUNWU_GEMINI_API_BASE = os.getenv("YUNWU_GEMINI_API_BASE", "https://yunwu.ai/v1beta")
 YUNWU_API_KEY = os.getenv("YUNWU_API_KEY", GEMINI_API_KEY)
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-change-me")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))
 
 ENV_DEFAULTS = {
     "RELAY_API_BASE": RELAY_API_BASE,

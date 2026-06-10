@@ -1,7 +1,19 @@
 """ORM 数据库模型"""
-from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, Boolean
 from sqlalchemy.sql import func
 from database import Base
+
+
+class User(Base):
+    """用户账号表。"""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
 
 
 class EditSession(Base):
@@ -9,6 +21,7 @@ class EditSession(Base):
     __tablename__ = "edit_sessions"
 
     id = Column(String(36), primary_key=True)  # UUID
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     title = Column(String(200), nullable=True)  # 会话标题（取第一条指令前20字）
     original_url = Column(Text, nullable=False)  # 原始主图路径
     created_at = Column(DateTime, server_default=func.now())
@@ -21,6 +34,7 @@ class EditRecord(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(String(36), ForeignKey("edit_sessions.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     parent_id = Column(Integer, ForeignKey("edit_records.id"), nullable=True)  # 上一轮记录 ID
 
     # 输入

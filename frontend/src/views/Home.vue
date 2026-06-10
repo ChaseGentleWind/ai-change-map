@@ -21,6 +21,9 @@ const outputCount = ref(1)
 const taskMode = ref<TaskMode>('general')
 const textLayers = ref<TextLayer[]>([])
 const brushSize = ref(48)
+const maskTool = ref<'paint' | 'erase'>('paint')
+const maskFeather = ref(4)
+const textTool = ref<'select' | 'erase'>('select')
 const maskPreviewUrl = ref('')
 const canvasEditor = ref<InstanceType<typeof ImageCanvasEditor> | null>(null)
 
@@ -130,6 +133,9 @@ async function loadSessionDetail(id: string) {
     taskMode.value = metadata?.task_mode || 'general'
     textLayers.value = metadata?.text_layers || []
     brushSize.value = metadata?.mask?.brushSize || 48
+    maskFeather.value = metadata?.mask?.feather ?? 4
+    maskTool.value = 'paint'
+    textTool.value = 'select'
     maskPreviewUrl.value = lastRecord?.mask_url || ''
     currentParentId.value = lastRecord?.id ?? null
     currentParentResultIndex.value = 0
@@ -176,6 +182,9 @@ function setMainImage(file: File) {
   currentParentResultIndex.value = 0
   taskMode.value = 'general'
   textLayers.value = []
+  maskTool.value = 'paint'
+  maskFeather.value = 4
+  textTool.value = 'select'
   maskPreviewUrl.value = ''
   void canvasEditor.value?.clearMask()
   if (route.query.sessionId) {
@@ -234,12 +243,12 @@ async function submitEdit() {
     const metadata: EditMetadata = {
       task_mode: taskMode.value,
       text_layers: textLayers.value,
-      mask: { brushSize: brushSize.value }
+      mask: { brushSize: brushSize.value, feather: maskFeather.value }
     }
     const mainImageForSubmit = taskMode.value === 'text_layer' && canvasEditor.value
       ? await canvasEditor.value.exportCompositeImage()
       : mainImage.value!
-    const maskImage = taskMode.value === 'local_edit' && canvasEditor.value
+    const maskImage = (taskMode.value === 'local_edit' || taskMode.value === 'text_layer') && canvasEditor.value
       ? await canvasEditor.value.exportMaskImage()
       : null
     const instructionText = instruction.value.trim() || '修改文字图层'
@@ -315,6 +324,9 @@ async function continueFromRecord(record: EditRecord, resultIndex: number = 0) {
       textLayers.value = record.edit_metadata?.text_layers || []
       taskMode.value = record.edit_metadata?.task_mode || taskMode.value
       brushSize.value = record.edit_metadata?.mask?.brushSize || brushSize.value
+      maskFeather.value = record.edit_metadata?.mask?.feather ?? maskFeather.value
+      maskTool.value = 'paint'
+      textTool.value = 'select'
       maskPreviewUrl.value = record.mask_url || ''
     } catch (e) {
       error.value = '加载选中的结果图失败'
@@ -349,6 +361,9 @@ function reset() {
   taskMode.value = 'general'
   textLayers.value = []
   brushSize.value = 48
+  maskTool.value = 'paint'
+  maskFeather.value = 4
+  textTool.value = 'select'
   maskPreviewUrl.value = ''
   error.value = ''
   if (route.query.sessionId) {
@@ -433,7 +448,11 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
                 :image-src="mainImagePreview"
                 :task-mode="taskMode"
                 :text-layers="textLayers"
+                @update:text-layers="textLayers = $event"
                 :brush-size="brushSize"
+                :mask-tool="maskTool"
+                :mask-feather="maskFeather"
+                :text-tool="textTool"
                 :mask-src="maskPreviewUrl"
               />
               <button
@@ -451,15 +470,73 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
               <div class="flex items-center justify-between gap-3 mb-2">
                 <span class="text-[12px] font-medium text-ink-soft">涂抹需要修改的区域</span>
                 <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    class="dk-btn-ghost text-[12px]"
+                    :class="maskTool === 'paint' ? 'bg-selected text-ink' : ''"
+                    @click="maskTool = 'paint'"
+                  >
+                    画笔
+                  </button>
+                  <button
+                    type="button"
+                    class="dk-btn-ghost text-[12px]"
+                    :class="maskTool === 'erase' ? 'bg-selected text-ink' : ''"
+                    @click="maskTool = 'erase'"
+                  >
+                    橡皮
+                  </button>
                   <button type="button" class="dk-btn-ghost text-[12px]" @click="canvasEditor?.undoMask()">撤销</button>
                   <button type="button" class="dk-btn-ghost text-[12px]" @click="maskPreviewUrl = ''; canvasEditor?.clearMask()">清空</button>
                 </div>
               </div>
-              <label class="flex items-center gap-3 text-[12px] text-ink-muted">
-                画笔
-                <input v-model.number="brushSize" type="range" min="12" max="140" class="flex-1" />
-                <span class="w-8 text-right">{{ brushSize }}</span>
-              </label>
+              <div class="space-y-2">
+                <label class="flex items-center gap-3 text-[12px] text-ink-muted">
+                  大小
+                  <input v-model.number="brushSize" type="range" min="12" max="140" class="flex-1" />
+                  <span class="w-8 text-right">{{ brushSize }}</span>
+                </label>
+                <label class="flex items-center gap-3 text-[12px] text-ink-muted">
+                  羽化
+                  <input v-model.number="maskFeather" type="range" min="0" max="24" class="flex-1" />
+                  <span class="w-8 text-right">{{ maskFeather }}</span>
+                </label>
+              </div>
+            </div>
+
+            <div v-if="mainImagePreview && taskMode === 'text_layer'" class="mt-3 rounded-xl border border-line bg-white p-3">
+              <div class="flex items-center justify-between gap-3 mb-2">
+                <span class="text-[12px] font-medium text-ink-soft">文字编辑工具</span>
+                <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    class="dk-btn-ghost text-[12px]"
+                    :class="textTool === 'select' ? 'bg-selected text-ink' : ''"
+                    @click="textTool = 'select'; maskTool = 'paint'"
+                  >
+                    拖拽缩放
+                  </button>
+                  <button
+                    type="button"
+                    class="dk-btn-ghost text-[12px]"
+                    :class="textTool === 'erase' ? 'bg-selected text-ink' : ''"
+                    @click="textTool = 'erase'; maskTool = 'paint'"
+                  >
+                    擦除原文字
+                  </button>
+                  <button type="button" class="dk-btn-ghost text-[12px]" @click="canvasEditor?.undoMask()">撤销</button>
+                  <button type="button" class="dk-btn-ghost text-[12px]" @click="maskPreviewUrl = ''; canvasEditor?.clearMask()">清空</button>
+                </div>
+              </div>
+              <div v-if="textTool === 'erase'" class="space-y-2">
+                <label class="flex items-center gap-3 text-[12px] text-ink-muted">
+                  擦除大小
+                  <input v-model.number="brushSize" type="range" min="12" max="140" class="flex-1" />
+                  <span class="w-8 text-right">{{ brushSize }}</span>
+                </label>
+                <p class="text-[11px] text-ink-faint">先涂抹原文字区域，再切回拖拽缩放调整新文字。</p>
+              </div>
+              <p v-else class="text-[11px] text-ink-faint">点击文字可选中并拖动，拖动蓝色方块可缩放字号。</p>
             </div>
 
             <!-- 参考图缩略图条（内联在主图卡内） -->

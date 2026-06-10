@@ -6,8 +6,14 @@ import type {
   SessionListResponse,
   Session,
   EditMetadata,
-  TaskMode
+  TaskMode,
+  AuthResponse,
+  LoginRequest,
+  RegisterRequest,
+  User
 } from '@/types'
+
+const AUTH_TOKEN_KEY = 'ai_change_map_token'
 
 const api = axios.create({
   baseURL: '/',
@@ -17,6 +23,10 @@ const api = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   config => {
+    const token = localStorage.getItem(AUTH_TOKEN_KEY)
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
     return config
   },
   error => {
@@ -28,10 +38,37 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   response => response.data,
   error => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem(AUTH_TOKEN_KEY)
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login'
+      }
+    }
     const message = error.response?.data?.detail || error.message || '请求失败'
     return Promise.reject(new Error(message))
   }
 )
+
+/**
+ * 用户注册
+ */
+export async function register(payload: RegisterRequest): Promise<AuthResponse> {
+  return api.post('/api/auth/register', payload)
+}
+
+/**
+ * 用户登录
+ */
+export async function login(payload: LoginRequest): Promise<AuthResponse> {
+  return api.post('/api/auth/login', payload)
+}
+
+/**
+ * 获取当前用户
+ */
+export async function getCurrentUser(): Promise<User> {
+  return api.get('/api/auth/me')
+}
 
 /**
  * 图像编辑接口

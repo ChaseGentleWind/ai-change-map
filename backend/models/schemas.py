@@ -4,6 +4,38 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 
+class UserSchema(BaseModel):
+    """当前登录用户信息。"""
+    id: int
+    username: str
+    email: str
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class RegisterRequestSchema(BaseModel):
+    """注册请求。"""
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., min_length=5, max_length=255)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+class LoginRequestSchema(BaseModel):
+    """登录请求。"""
+    username_or_email: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=1, max_length=128)
+
+
+class AuthResponseSchema(BaseModel):
+    """登录/注册响应。"""
+    access_token: str
+    token_type: str = "bearer"
+    user: UserSchema
+
+
 class EditRequestSchema(BaseModel):
     """编辑请求（JSON 部分，图片通过 multipart 传）"""
     instruction: str = Field(..., description="自然语言编辑指令")
