@@ -24,21 +24,21 @@ async function handleLogout() {
 <template>
   <RouterView v-if="isAuthPage" />
 
-  <div v-else class="min-h-screen flex bg-canvas text-ink">
-    <!-- 左侧 80px 窄边栏 -->
-    <aside class="w-20 shrink-0 bg-sidebar flex flex-col items-center py-4 sticky top-0 h-screen">
+  <div v-else class="min-h-screen bg-canvas text-ink md:flex">
+    <!-- 桌面左侧栏，手机底部栏 -->
+    <aside class="fixed inset-x-0 bottom-0 z-30 h-16 bg-sidebar border-t border-line/60 flex items-center justify-between px-4 md:sticky md:inset-auto md:top-0 md:h-screen md:w-20 md:shrink-0 md:flex-col md:justify-start md:border-t-0 md:px-0 md:py-4">
       <!-- Logo -->
-      <router-link to="/" class="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center font-bold text-lg mb-6">
+      <router-link to="/" class="hidden md:flex w-10 h-10 rounded-xl bg-brand text-white items-center justify-center font-bold text-lg mb-6">
         AI
       </router-link>
 
       <!-- 导航项 -->
-      <nav class="flex flex-col gap-1 w-16">
+      <nav class="flex items-center gap-2 md:flex-col md:gap-1 md:w-16">
         <router-link
           v-for="item in navItems"
           :key="item.to"
           :to="item.to"
-          class="flex flex-col items-center justify-center h-16 rounded-xl transition-colors"
+          class="flex flex-col items-center justify-center h-12 w-16 rounded-xl transition-colors md:h-16"
           :class="activePath === item.to ? 'bg-selected text-ink' : 'text-ink-soft hover:bg-selected/60'"
         >
           <!-- icons -->
@@ -52,9 +52,9 @@ async function handleLogout() {
         </router-link>
       </nav>
 
-      <div class="mt-auto flex flex-col items-center gap-2">
+      <div class="flex items-center gap-2 md:mt-auto md:flex-col">
         <div
-          class="w-10 h-10 rounded-xl bg-white border border-line flex items-center justify-center text-[13px] font-semibold text-ink"
+          class="hidden sm:flex w-10 h-10 rounded-xl bg-white border border-line items-center justify-center text-[13px] font-semibold text-ink"
           :title="auth.state.user?.email || auth.state.user?.username"
         >
           {{ auth.state.user?.username?.slice(0, 1).toUpperCase() || 'U' }}
@@ -72,7 +72,7 @@ async function handleLogout() {
     </aside>
 
     <!-- 右侧主区 -->
-    <main class="flex-1 min-w-0">
+    <main class="min-w-0 pb-20 md:flex-1 md:pb-0">
       <RouterView />
     </main>
   </div>

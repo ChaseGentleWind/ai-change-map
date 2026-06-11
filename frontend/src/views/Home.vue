@@ -371,49 +371,26 @@ function reset() {
   }
 }
 
-// 示例指令
-const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除某个物体']
 </script>
 
 <template>
   <div class="min-h-screen">
     <!-- 顶部 bar -->
     <header class="sticky top-0 z-10 bg-canvas/80 backdrop-blur border-b border-line/60">
-      <div class="max-w-[1400px] mx-auto px-8 py-4 flex items-center gap-6">
+      <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center">
         <h1 class="text-[18px] font-semibold text-ink shrink-0">AI 图像编辑</h1>
-        <div class="flex-1 max-w-2xl">
-          <div class="dk-input flex items-center gap-2 cursor-text">
-            <svg class="w-4 h-4 text-ink-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.3-4.3M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/>
-            </svg>
-            <span class="text-ink-faint">输入想要的修改，或试试热门指令 →</span>
-            <div class="ml-auto flex gap-2">
-              <button
-                v-for="ex in examples.slice(0, 3)"
-                :key="ex"
-                class="text-[12px] text-ink-muted hover:text-brand"
-                @click="instruction = ex"
-              >
-                {{ ex }}
-              </button>
-            </div>
-          </div>
-        </div>
-        <div class="ml-auto text-[12px] text-ink-muted">
-          基于原图精准修改，其他部分保持不变
-        </div>
       </div>
     </header>
 
-    <div class="max-w-[1400px] mx-auto px-8 py-6">
-      <div class="grid grid-cols-12 gap-6">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
+      <div class="grid grid-cols-12 gap-4 lg:gap-6">
 
         <!-- 左侧：上传与控制（5 列） -->
         <div class="col-span-12 lg:col-span-5 space-y-4">
 
           <!-- 图片卡：主图 + 参考图（合并） -->
-          <section class="dk-card p-5">
-            <div class="flex items-center justify-between mb-3">
+          <section class="dk-card p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-3 mb-3">
               <h2 class="dk-section-title">图片</h2>
               <span class="text-[12px] text-ink-faint">JPG / PNG / WebP，≤ 20MB</span>
             </div>
@@ -467,9 +444,9 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
             </div>
 
             <div v-if="mainImagePreview && taskMode === 'local_edit'" class="mt-3 rounded-xl border border-line bg-white p-3">
-              <div class="flex items-center justify-between gap-3 mb-2">
+              <div class="flex flex-col gap-2 mb-2 sm:flex-row sm:items-center sm:justify-between">
                 <span class="text-[12px] font-medium text-ink-soft">涂抹需要修改的区域</span>
-                <div class="flex items-center gap-1">
+                <div class="flex flex-wrap items-center gap-1">
                   <button
                     type="button"
                     class="dk-btn-ghost text-[12px]"
@@ -505,9 +482,9 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
             </div>
 
             <div v-if="mainImagePreview && taskMode === 'text_layer'" class="mt-3 rounded-xl border border-line bg-white p-3">
-              <div class="flex items-center justify-between gap-3 mb-2">
+              <div class="flex flex-col gap-2 mb-2 sm:flex-row sm:items-center sm:justify-between">
                 <span class="text-[12px] font-medium text-ink-soft">文字编辑工具</span>
-                <div class="flex items-center gap-1">
+                <div class="flex flex-wrap items-center gap-1">
                   <button
                     type="button"
                     class="dk-btn-ghost text-[12px]"
@@ -541,7 +518,7 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
 
             <!-- 参考图缩略图条（内联在主图卡内） -->
             <div class="mt-3 pt-3 border-t border-line/60">
-              <div class="flex items-center justify-between mb-2">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <span class="text-[12px] font-medium text-ink-soft">参考图</span>
                 <span class="text-[11px] text-ink-faint">可选 · 用于风格/物件参考</span>
               </div>
@@ -589,8 +566,8 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
           />
 
           <!-- 模型卡：卡片式选择器 -->
-          <section v-if="taskMode !== 'text_layer'" class="dk-card p-5">
-            <div class="flex items-center justify-between mb-3">
+          <section v-if="taskMode !== 'text_layer'" class="dk-card p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-3 mb-3">
               <h2 class="dk-section-title">选择模型</h2>
               <span class="text-[12px] text-ink-faint">不同模型擅长不同任务</span>
             </div>
@@ -658,8 +635,8 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
           </section>
 
           <!-- 指令卡 -->
-          <section class="dk-card p-5">
-            <div class="flex items-center justify-between mb-3">
+          <section class="dk-card p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-3 mb-3">
               <h2 class="dk-section-title">编辑指令</h2>
               <span class="text-[12px] text-ink-faint">Ctrl + Enter 提交</span>
             </div>
@@ -687,28 +664,16 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
               </button>
             </div>
 
-            <!-- 示例指令 -->
-            <div class="mt-3 flex flex-wrap gap-2">
-              <button
-                v-for="ex in examples"
-                :key="ex"
-                class="text-[12px] px-2.5 py-1 rounded-full bg-white border border-line text-ink-muted hover:text-brand hover:border-brand/40 transition-colors"
-                @click="instruction = ex"
-              >
-                {{ ex }}
-              </button>
-            </div>
-
             <!-- 提交栏：生成数量 + 提交按钮内联 -->
-            <div class="mt-4 flex items-center gap-3">
+            <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
               <div
                 v-if="taskMode !== 'text_layer'"
-                class="flex items-center gap-1 bg-white border border-line rounded-lg p-0.5"
+                class="flex w-full items-center gap-1 bg-white border border-line rounded-lg p-0.5 sm:w-auto"
               >
                 <button
                   v-for="n in [1, 2, 4]"
                   :key="n"
-                  class="px-2.5 py-1 text-[12px] rounded-md transition-colors"
+                  class="flex-1 px-2.5 py-1 text-[12px] rounded-md transition-colors sm:flex-none"
                   :class="outputCount === n
                     ? 'bg-brand text-white font-medium'
                     : 'text-ink-muted hover:text-ink'"
@@ -719,7 +684,7 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
               </div>
 
               <button
-                class="flex-1 py-3 rounded-card font-medium text-white text-[14px] transition-all"
+                class="w-full sm:flex-1 py-3 rounded-card font-medium text-white text-[14px] transition-all"
                 :class="canSubmit
                   ? 'bg-brand hover:bg-brand/90 shadow-sm hover:shadow-hover'
                   : 'bg-ink-faint/40 cursor-not-allowed'"
@@ -747,7 +712,7 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
         <div class="col-span-12 lg:col-span-7 space-y-4">
 
           <!-- 空态 -->
-          <div v-if="sessionLoading" class="dk-card p-10 text-center">
+          <div v-if="sessionLoading" class="dk-card p-6 sm:p-10 text-center">
             <svg class="animate-spin h-8 w-8 text-brand mx-auto mb-4" viewBox="0 0 24 24" fill="none">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -758,7 +723,7 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
 
           <div
             v-if="chatHistory.length === 0 && !loading && !sessionLoading"
-            class="dk-card p-12 flex flex-col items-center justify-center text-center min-h-[480px]"
+            class="dk-card p-6 sm:p-12 flex flex-col items-center justify-center text-center min-h-[320px] sm:min-h-[480px]"
           >
             <div class="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center mb-4">
               <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.6">
@@ -778,13 +743,13 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
             class="dk-card overflow-hidden"
           >
             <!-- 指令头 -->
-            <div class="px-5 py-3 bg-white/60 border-b border-line/60">
+            <div class="px-4 sm:px-5 py-3 bg-white/60 border-b border-line/60">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <span class="text-[11px] text-ink-faint">第 {{ index + 1 }} 轮</span>
                   <p class="text-[14px] text-ink font-medium mt-0.5 break-words">{{ record.instruction }}</p>
                 </div>
-                <div class="flex items-center gap-1.5 shrink-0">
+                <div class="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
                   <span class="text-[11px] bg-brand-50 text-brand px-2 py-0.5 rounded-full">
                     {{ record.provider }}
                   </span>
@@ -796,10 +761,10 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
             </div>
 
             <!-- 结果图 -->
-            <div class="p-4">
+            <div class="p-3 sm:p-4">
               <div
                 class="grid gap-3"
-                :class="record.result_urls && record.result_urls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'"
+                :class="record.result_urls && record.result_urls.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'"
               >
                 <div
                   v-for="(url, imgIndex) in record.result_urls"
@@ -811,7 +776,7 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
                     class="w-full object-contain"
                     :alt="`结果图 ${imgIndex + 1}`"
                   />
-                  <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                     <div class="flex flex-wrap items-center justify-center gap-2 px-3">
                       <button
                         class="bg-white text-ink px-4 py-1.5 rounded-lg text-[13px] font-medium shadow-hover hover:bg-canvas"
@@ -831,8 +796,8 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
               </div>
 
               <!-- 操作栏 -->
-              <div class="flex items-center justify-between mt-3 pt-3 border-t border-line/60">
-                <div class="text-[11px] text-ink-faint flex items-center gap-2">
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-3 pt-3 border-t border-line/60">
+                <div class="text-[11px] text-ink-faint flex flex-wrap items-center gap-2">
                   <span v-if="record.duration_ms">{{ (record.duration_ms / 1000).toFixed(1) }}s</span>
                   <span v-if="record.cost">·</span>
                   <span v-if="record.cost">${{ record.cost.toFixed(4) }}</span>
@@ -852,7 +817,7 @@ const examples = ['去掉水印', '替换背景', '修改文字颜色', '移除�
           </article>
 
           <!-- 加载中占位 -->
-          <div v-if="loading" class="dk-card p-10 text-center">
+          <div v-if="loading" class="dk-card p-6 sm:p-10 text-center">
             <svg class="animate-spin h-8 w-8 text-brand mx-auto mb-4" viewBox="0 0 24 24" fill="none">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/>

@@ -35,8 +35,8 @@ function removeLayer(id: string) {
 </script>
 
 <template>
-  <section class="dk-card p-5">
-    <div class="flex items-center justify-between mb-3">
+  <section class="dk-card p-4 sm:p-5">
+    <div class="flex items-center justify-between gap-3 mb-3">
       <h2 class="dk-section-title">文字图层</h2>
       <button type="button" class="dk-btn-ghost text-[12px]" @click="addLayer">添加文字</button>
     </div>
@@ -51,7 +51,7 @@ function removeLayer(id: string) {
         :key="layer.id"
         class="rounded-xl border border-line bg-white p-3 space-y-3"
       >
-        <div class="flex items-center gap-2">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             :value="layer.text"
             class="dk-input rounded-lg py-1.5"
@@ -60,7 +60,7 @@ function removeLayer(id: string) {
           <button type="button" class="dk-btn-ghost text-red-500 shrink-0" @click="removeLayer(layer.id)">删除</button>
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <label class="text-[11px] text-ink-muted">
             字号
             <input

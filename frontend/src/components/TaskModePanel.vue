@@ -17,25 +17,25 @@ const modes: Array<{ value: TaskMode; label: string; desc: string }> = [
 </script>
 
 <template>
-  <section class="dk-card p-5">
-    <div class="flex items-center justify-between mb-3">
+  <section class="dk-card p-4 sm:p-5">
+    <div class="flex items-center justify-between gap-3 mb-3">
       <h2 class="dk-section-title">编辑方式</h2>
       <span class="text-[12px] text-ink-faint">先选择工作流</span>
     </div>
 
-    <div class="grid grid-cols-3 gap-2">
+    <div class="grid grid-cols-3 gap-1.5 sm:gap-2">
       <button
         v-for="mode in modes"
         :key="mode.value"
         type="button"
-        class="rounded-xl border p-3 text-left transition-all"
+        class="rounded-xl border px-2 py-2.5 text-center transition-all sm:p-3 sm:text-left"
         :class="modelValue === mode.value
           ? 'border-brand bg-brand-50/70 shadow-sm'
           : 'border-line bg-white hover:border-brand/40'"
         @click="emit('update:modelValue', mode.value)"
       >
-        <div class="text-[13px] font-semibold text-ink">{{ mode.label }}</div>
-        <div class="text-[11px] text-ink-muted mt-1 leading-[16px]">{{ mode.desc }}</div>
+        <div class="text-[13px] font-semibold text-ink leading-tight">{{ mode.label }}</div>
+        <div class="hidden sm:block text-[11px] text-ink-muted mt-1 leading-[16px]">{{ mode.desc }}</div>
       </button>
     </div>
   </section>
