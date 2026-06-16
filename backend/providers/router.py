@@ -80,6 +80,6 @@ class TaskRouter:
         task_type = self.detect_task_type(instruction, has_reference_images, has_parent)
 
         # 根据任务类型选择 provider
-        provider = self.config.get(task_type, self.config.get("default", "gemini"))
+        provider = self.config.get(task_type, self.config.get("default", "openai"))
 
         return provider, task_type

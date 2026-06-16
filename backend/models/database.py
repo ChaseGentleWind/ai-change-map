@@ -1,5 +1,5 @@
 """ORM 数据库模型"""
-from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Index, Integer, String, Text, Float, DateTime, ForeignKey, Boolean
 from sqlalchemy.sql import func
 from database import Base
 
@@ -10,7 +10,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
-    email = Column(String(255), unique=True, index=True, nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=True)  # 旧版本遗留字段，不再用于注册登录
+    phone = Column(String(20), unique=True, index=True, nullable=True)
     password_hash = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
@@ -26,6 +27,10 @@ class EditSession(Base):
     original_url = Column(Text, nullable=False)  # 原始主图路径
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("ix_edit_sessions_user_updated", "user_id", "updated_at"),
+    )
 
 
 class EditRecord(Base):
@@ -61,3 +66,8 @@ class EditRecord(Base):
     duration_ms = Column(Integer, nullable=True)    # 耗时毫秒
 
     created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_edit_records_session_created", "session_id", "created_at"),
+        Index("ix_edit_records_user_created", "user_id", "created_at"),
+    )
