@@ -3,6 +3,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -12,13 +13,15 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import JWT_ACCESS_TOKEN_EXPIRE_MINUTES, JWT_ALGORITHM, JWT_SECRET_KEY
+from config import ADMIN_PHONES, ADMIN_USERNAMES, JWT_ACCESS_TOKEN_EXPIRE_MINUTES, JWT_ALGORITHM, JWT_SECRET_KEY
 from database import get_db
 from models.database import User
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 PBKDF2_ITERATIONS = 260000
+USERNAME_PATTERN = re.compile(r"[\u4e00-\u9fffA-Za-z0-9]{1,15}")
+PHONE_PATTERN = re.compile(r"1[3-9]\d{9}")
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
@@ -87,6 +90,30 @@ async def get_current_user(
     if not user or not user.is_active:
         raise credentials_exception
     return user
+
+
+async def get_current_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    """校验当前用户是否拥有管理员权限。"""
+    if not is_admin_user(current_user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="没有管理员权限")
+    return current_user
+
+
+def is_admin_user(user: User) -> bool:
+    """按环境变量判断用户是否是管理员。"""
+    return user.username in ADMIN_USERNAMES or bool(user.phone and user.phone in ADMIN_PHONES)
+
+
+def validate_username(username: str):
+    """校验用户名：中文、英文字母或数字，长度 1-15。"""
+    if not USERNAME_PATTERN.fullmatch(username):
+        raise HTTPException(400, "用户名只能包含中文、英文字母或数字，长度 1-15 位")
+
+
+def validate_phone(phone: str):
+    """校验中国大陆手机号。"""
+    if not PHONE_PATTERN.fullmatch(phone):
+        raise HTTPException(400, "手机号格式不正确")
 
 
 def _pbkdf2_hash(password: str, salt: str, iterations: int) -> str:

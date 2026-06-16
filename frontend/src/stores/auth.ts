@@ -1,6 +1,6 @@
 import { computed, reactive } from 'vue'
-import { getCurrentUser, login as loginApi, register as registerApi } from '@/api'
-import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types'
+import { getCurrentUser, login as loginApi, register as registerApi, updateProfile as updateProfileApi } from '@/api'
+import type { AuthResponse, LoginRequest, RegisterRequest, UpdateProfileRequest, User } from '@/types'
 
 const AUTH_TOKEN_KEY = 'ai_change_map_token'
 
@@ -43,6 +43,10 @@ async function register(payload: RegisterRequest) {
   applyAuth(response)
 }
 
+async function updateProfile(payload: UpdateProfileRequest) {
+  state.user = await updateProfileApi(payload)
+}
+
 function logout(resetInitialized = true) {
   state.token = ''
   state.user = null
@@ -59,6 +63,7 @@ export function useAuth() {
     initAuth,
     login,
     register,
+    updateProfile,
     logout
   }
 }

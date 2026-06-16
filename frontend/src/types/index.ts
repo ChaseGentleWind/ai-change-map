@@ -3,20 +3,31 @@
 export interface User {
   id: number
   username: string
-  email: string
+  phone?: string
   is_active: boolean
+  is_admin: boolean
   created_at: string
 }
 
 export interface LoginRequest {
-  username_or_email: string
+  username_or_phone: string
   password: string
 }
 
 export interface RegisterRequest {
   username: string
-  email: string
+  phone: string
   password: string
+}
+
+export interface UpdateProfileRequest {
+  username: string
+  phone: string
+}
+
+export interface UpdatePasswordRequest {
+  current_password: string
+  new_password: string
 }
 
 export interface AuthResponse {
@@ -138,4 +149,44 @@ export interface SessionListResponse {
   page: number
   page_size: number
   items: SessionListItem[]
+}
+
+export interface AdminUserListItem {
+  id: number
+  username: string
+  phone?: string
+  is_active: boolean
+  is_admin: boolean
+  session_count: number
+  record_count: number
+  last_active_at?: string
+  created_at: string
+}
+
+export interface AdminUserDetail extends AdminUserListItem {}
+
+export interface AdminUserListResponse {
+  total: number
+  page: number
+  page_size: number
+  items: AdminUserListItem[]
+}
+
+export interface AdminUpdateUserRequest {
+  username: string
+  phone: string
+  is_active: boolean
+}
+
+export interface AdminUserHistoryResponse {
+  user: AdminUserDetail
+  total: number
+  page: number
+  page_size: number
+  items: SessionListItem[]
+}
+
+export interface AdminSessionDetailResponse {
+  user: AdminUserDetail
+  session: Session
 }

@@ -5,14 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from database import init_db
-from routers import auth as auth_router, edit, history, providers
-from config import UPLOAD_DIR, OUTPUT_DIR
+from routers import admin, auth as auth_router, edit, history, providers
+from config import UPLOAD_DIR, OUTPUT_DIR, CORS_ALLOWED_ORIGINS, validate_startup_config
+from services.admin_bootstrap import ensure_admin_account
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
+    validate_startup_config()
     await init_db()
+    await ensure_admin_account()
     print("✅ 数据库初始化完成")
     yield
 
@@ -24,10 +27,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS 配置
+# CORS 配置（通过 CORS_ALLOWED_ORIGINS 环境变量设置白名单，默认仅开发环境使用 *）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应限制具体域名
+    allow_origins=CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,6 +38,7 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(auth_router.router)
+app.include_router(admin.router)
 app.include_router(edit.router)
 app.include_router(history.router)
 app.include_router(providers.router)

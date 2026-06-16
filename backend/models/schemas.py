@@ -8,8 +8,9 @@ class UserSchema(BaseModel):
     """当前登录用户信息。"""
     id: int
     username: str
-    email: str
+    phone: Optional[str] = None
     is_active: bool
+    is_admin: bool = False
     created_at: datetime
 
     class Config:
@@ -18,15 +19,27 @@ class UserSchema(BaseModel):
 
 class RegisterRequestSchema(BaseModel):
     """注册请求。"""
-    username: str = Field(..., min_length=3, max_length=50)
-    email: str = Field(..., min_length=5, max_length=255)
-    password: str = Field(..., min_length=8, max_length=128)
+    username: str = Field(..., min_length=1, max_length=15)
+    phone: str = Field(..., min_length=11, max_length=11)
+    password: str = Field(..., min_length=6, max_length=128)
 
 
 class LoginRequestSchema(BaseModel):
     """登录请求。"""
-    username_or_email: str = Field(..., min_length=1, max_length=255)
+    username_or_phone: str = Field(..., min_length=1, max_length=50)
     password: str = Field(..., min_length=1, max_length=128)
+
+
+class UpdateProfileRequestSchema(BaseModel):
+    """修改个人资料请求。"""
+    username: str = Field(..., min_length=1, max_length=15)
+    phone: str = Field(..., min_length=11, max_length=11)
+
+
+class UpdatePasswordRequestSchema(BaseModel):
+    """修改密码请求。"""
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=6, max_length=128)
 
 
 class AuthResponseSchema(BaseModel):
@@ -142,3 +155,51 @@ class SessionListSchema(BaseModel):
     page: int
     page_size: int
     items: List[SessionListItemSchema]
+
+
+class AdminUserListItemSchema(BaseModel):
+    """管理员用户列表项。"""
+    id: int
+    username: str
+    phone: Optional[str] = None
+    is_active: bool
+    is_admin: bool
+    session_count: int
+    record_count: int
+    last_active_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class AdminUserListSchema(BaseModel):
+    """管理员用户列表响应。"""
+    total: int
+    page: int
+    page_size: int
+    items: List[AdminUserListItemSchema]
+
+
+class AdminUserDetailSchema(AdminUserListItemSchema):
+    """管理员用户详情。"""
+    pass
+
+
+class AdminUpdateUserRequestSchema(BaseModel):
+    """管理员修改用户请求。"""
+    username: str = Field(..., min_length=1, max_length=15)
+    phone: str = Field(..., min_length=11, max_length=11)
+    is_active: bool
+
+
+class AdminUserHistorySchema(BaseModel):
+    """管理员查看指定用户历史响应。"""
+    user: AdminUserDetailSchema
+    total: int
+    page: int
+    page_size: int
+    items: List[SessionListItemSchema]
+
+
+class AdminSessionDetailSchema(BaseModel):
+    """管理员查看会话详情响应。"""
+    user: AdminUserDetailSchema
+    session: SessionSchema

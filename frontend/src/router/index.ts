@@ -18,6 +18,24 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('@/views/Profile.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/users',
+      name: 'admin-users',
+      component: () => import('@/views/AdminUsers.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/users/:userId',
+      name: 'admin-user-detail',
+      component: () => import('@/views/AdminUserDetail.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/Auth.vue'),
@@ -38,6 +56,10 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth && !auth.isAuthenticated.value) {
     return { path: '/login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.requiresAdmin && !auth.state.user?.is_admin) {
+    return '/'
   }
 
   if (to.meta.guestOnly && auth.isAuthenticated.value) {

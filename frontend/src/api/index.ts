@@ -10,6 +10,13 @@ import type {
   AuthResponse,
   LoginRequest,
   RegisterRequest,
+  UpdatePasswordRequest,
+  UpdateProfileRequest,
+  AdminSessionDetailResponse,
+  AdminUpdateUserRequest,
+  AdminUserDetail,
+  AdminUserHistoryResponse,
+  AdminUserListResponse,
   User
 } from '@/types'
 
@@ -68,6 +75,20 @@ export async function login(payload: LoginRequest): Promise<AuthResponse> {
  */
 export async function getCurrentUser(): Promise<User> {
   return api.get('/api/auth/me')
+}
+
+/**
+ * 修改个人资料
+ */
+export async function updateProfile(payload: UpdateProfileRequest): Promise<User> {
+  return api.put('/api/auth/me/profile', payload)
+}
+
+/**
+ * 修改密码
+ */
+export async function updatePassword(payload: UpdatePasswordRequest): Promise<{ message: string }> {
+  return api.put('/api/auth/me/password', payload)
 }
 
 /**
@@ -157,6 +178,60 @@ export async function getSession(sessionId: string): Promise<Session> {
  */
 export async function deleteSession(sessionId: string): Promise<void> {
   return api.delete(`/api/history/${sessionId}`)
+}
+
+/**
+ * 管理员获取用户列表
+ */
+export async function getAdminUsers(
+  page: number = 1,
+  pageSize: number = 20,
+  q: string = ''
+): Promise<AdminUserListResponse> {
+  return api.get('/api/admin/users', {
+    params: { page, page_size: pageSize, q: q || undefined }
+  })
+}
+
+/**
+ * 管理员获取用户详情
+ */
+export async function getAdminUser(userId: number): Promise<AdminUserDetail> {
+  return api.get(`/api/admin/users/${userId}`)
+}
+
+/**
+ * 管理员更新用户
+ */
+export async function updateAdminUser(userId: number, payload: AdminUpdateUserRequest): Promise<AdminUserDetail> {
+  return api.put(`/api/admin/users/${userId}`, payload)
+}
+
+/**
+ * 管理员查看指定用户历史
+ */
+export async function getAdminUserHistory(
+  userId: number,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<AdminUserHistoryResponse> {
+  return api.get(`/api/admin/users/${userId}/history`, {
+    params: { page, page_size: pageSize }
+  })
+}
+
+/**
+ * 管理员查看任意会话详情
+ */
+export async function getAdminSession(sessionId: string): Promise<AdminSessionDetailResponse> {
+  return api.get(`/api/admin/history/${sessionId}`)
+}
+
+/**
+ * 管理员删除任意会话
+ */
+export async function deleteAdminSession(sessionId: string): Promise<void> {
+  return api.delete(`/api/admin/history/${sessionId}`)
 }
 
 export default api

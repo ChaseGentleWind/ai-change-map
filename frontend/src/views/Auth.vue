@@ -8,7 +8,7 @@ const router = useRouter()
 const auth = useAuth()
 
 const username = ref('')
-const email = ref('')
+const phone = ref('')
 const account = ref('')
 const password = ref('')
 const loading = ref(false)
@@ -31,12 +31,12 @@ async function submit() {
     if (isRegister.value) {
       await auth.register({
         username: username.value.trim(),
-        email: email.value.trim(),
+        phone: phone.value.trim(),
         password: password.value
       })
     } else {
       await auth.login({
-        username_or_email: account.value.trim(),
+        username_or_phone: account.value.trim(),
         password: password.value
       })
     }
@@ -52,8 +52,8 @@ async function submit() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-canvas flex items-center justify-center px-6 py-10">
-    <div class="w-full max-w-[920px] grid md:grid-cols-[1fr_420px] gap-8 items-center">
+  <div class="min-h-screen bg-canvas flex items-center justify-center px-5 py-8 sm:px-6 sm:py-10">
+    <div class="w-full max-w-[920px] grid gap-6 md:grid-cols-[1fr_420px] md:gap-8 md:items-center">
       <section class="hidden md:block">
         <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand text-white font-bold text-lg mb-5">
           AI
@@ -64,7 +64,7 @@ async function submit() {
         </p>
       </section>
 
-      <section class="dk-card bg-white border border-line p-6 shadow-hover">
+      <section class="dk-card bg-white border border-line p-5 shadow-hover sm:p-6">
         <div class="mb-6">
           <h2 class="text-[22px] font-semibold text-ink">{{ title }}</h2>
           <p class="text-[13px] text-ink-muted mt-1">使用账号继续编辑你的图片项目</p>
@@ -77,34 +77,38 @@ async function submit() {
               v-model="username"
               class="dk-input rounded-lg"
               required
-              minlength="3"
-              maxlength="50"
+              minlength="1"
+              maxlength="15"
+              pattern="[\u4e00-\u9fa5A-Za-z0-9]{1,15}"
               autocomplete="username"
-              placeholder="请输入用户名"
+              placeholder="中文、字母或数字，1-15 位"
             />
           </label>
 
           <label v-if="isRegister" class="block">
-            <span class="block text-[13px] font-medium text-ink-soft mb-1.5">邮箱</span>
+            <span class="block text-[13px] font-medium text-ink-soft mb-1.5">手机号</span>
             <input
-              v-model="email"
+              v-model="phone"
               class="dk-input rounded-lg"
               required
-              type="email"
-              maxlength="255"
-              autocomplete="email"
-              placeholder="请输入邮箱"
+              type="tel"
+              inputmode="numeric"
+              minlength="11"
+              maxlength="11"
+              pattern="1[3-9][0-9]{9}"
+              autocomplete="tel"
+              placeholder="请输入 11 位手机号"
             />
           </label>
 
           <label v-else class="block">
-            <span class="block text-[13px] font-medium text-ink-soft mb-1.5">用户名或邮箱</span>
+            <span class="block text-[13px] font-medium text-ink-soft mb-1.5">用户名或手机号</span>
             <input
               v-model="account"
               class="dk-input rounded-lg"
               required
               autocomplete="username"
-              placeholder="请输入用户名或邮箱"
+              placeholder="请输入用户名或手机号"
             />
           </label>
 
@@ -115,7 +119,7 @@ async function submit() {
               class="dk-input rounded-lg"
               required
               type="password"
-              :minlength="isRegister ? 8 : 1"
+              :minlength="isRegister ? 6 : 1"
               maxlength="128"
               :autocomplete="isRegister ? 'new-password' : 'current-password'"
               placeholder="请输入密码"
@@ -132,8 +136,8 @@ async function submit() {
             :disabled="loading"
           >
             <svg v-if="loading" class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/>
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
             {{ loading ? '处理中...' : submitText }}
           </button>

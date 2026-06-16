@@ -37,6 +37,32 @@ YUNWU_API_KEY = os.getenv("YUNWU_API_KEY", GEMINI_API_KEY)
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-change-me")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "").strip()
+ADMIN_PHONE = os.getenv("ADMIN_PHONE", "").strip()
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+ADMIN_USERNAMES = [item.strip() for item in os.getenv("ADMIN_USERNAMES", "").split(",") if item.strip()]
+ADMIN_PHONES = [item.strip() for item in os.getenv("ADMIN_PHONES", "").split(",") if item.strip()]
+if ADMIN_USERNAME and ADMIN_USERNAME not in ADMIN_USERNAMES:
+    ADMIN_USERNAMES.append(ADMIN_USERNAME)
+if ADMIN_PHONE and ADMIN_PHONE not in ADMIN_PHONES:
+    ADMIN_PHONES.append(ADMIN_PHONE)
+
+CORS_ALLOWED_ORIGINS_RAW = os.getenv("CORS_ALLOWED_ORIGINS", "")
+CORS_ALLOWED_ORIGINS = (
+    [o.strip() for o in CORS_ALLOWED_ORIGINS_RAW.split(",") if o.strip()]
+    or ["*"]
+)
+
+_INSECURE_JWT_DEFAULTS = {"dev-secret-change-me", "please_change_this_secret_in_production", ""}
+
+
+def validate_startup_config() -> None:
+    """启动时校验安全敏感配置，不合格直接抛错阻止启动。"""
+    if JWT_SECRET_KEY in _INSECURE_JWT_DEFAULTS or len(JWT_SECRET_KEY) < 32:
+        raise RuntimeError(
+            "JWT_SECRET_KEY 不安全：请在 .env 中设置长度 ≥ 32 的随机字符串，"
+            "可用 `python -c \"import secrets; print(secrets.token_hex(32))\"` 生成"
+        )
 
 ENV_DEFAULTS = {
     "RELAY_API_BASE": RELAY_API_BASE,
@@ -77,10 +103,10 @@ def load_providers_config() -> Dict[str, Any]:
             },
             "routing": {
                 "text_edit": "openai",
-                "watermark_remove": "gemini",
-                "reference_edit": "gemini",
-                "iterative_edit": "gemini",
-                "default": "gemini"
+                "watermark_remove": "openai",
+                "reference_edit": "openai",
+                "iterative_edit": "openai",
+                "default": "openai"
             },
             "fallback": {
                 "enabled": True,
