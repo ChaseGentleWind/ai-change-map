@@ -18,6 +18,7 @@ env/
 backend/db/*.db
 backend/db/*.db-shm
 backend/db/*.db-wal
+backend/tests/*.db
 
 # 上传和生成的图片
 uploads/
