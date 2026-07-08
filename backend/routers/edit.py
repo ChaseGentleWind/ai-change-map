@@ -15,6 +15,7 @@ from services.edit_service import EditService
 
 # 上传限制
 _MAX_IMAGE_SIZE = 20 * 1024 * 1024  # 20 MB
+_MAX_TOTAL_IMAGE_SIZE = 20 * 1024 * 1024  # 20 MB
 _ALLOWED_MIME_PREFIXES = ("image/jpeg", "image/png", "image/webp", "image/gif")
 _IMAGE_SUFFIX_BY_FORMAT = {
     "JPEG": ".jpg",
@@ -43,11 +44,27 @@ async def _read_image(upload: UploadFile, field_name: str) -> tuple[bytes, str]:
     return data, suffix
 
 
+def _validate_total_image_size(images: List[Optional[bytes]]) -> None:
+    """校验一次请求中所有输入图片的总大小。"""
+    total_size = sum(len(image) for image in images if image)
+    if total_size > _MAX_TOTAL_IMAGE_SIZE:
+        raise HTTPException(413, "所有输入图片总大小超过 20 MB 限制")
+
+
 def _normalize_task_mode(task_mode: str) -> str:
     allowed = {"general", "local_edit", "text_layer"}
     if task_mode not in allowed:
         raise HTTPException(400, "不支持的任务模式")
     return task_mode
+
+
+def _normalize_output_resolution(output_resolution: Optional[str]) -> Optional[str]:
+    if not output_resolution or output_resolution == "auto":
+        return None
+    value = output_resolution.lower()
+    if value not in {"1k", "2k", "4k"}:
+        raise HTTPException(400, "不支持的输出分辨率")
+    return value
 
 
 def _normalize_edit_metadata(edit_metadata: Optional[str], task_mode: str) -> str:
@@ -85,6 +102,7 @@ async def edit_image(
     parent_result_index: int = Form(0, description="父记录结果图索引"),
     provider: Optional[str] = Form(None, description="手动指定 provider"),
     output_count: int = Form(1, ge=1, description="生成数量"),
+    output_resolution: Optional[str] = Form(None, description="输出分辨率档位：1k/2k/4k"),
     task_mode: str = Form("general", description="任务模式"),
     edit_metadata: Optional[str] = Form(None, description="前端编辑状态 JSON"),
     reference_images: List[UploadFile] = File(default=[], description="参考图"),
@@ -103,9 +121,11 @@ async def edit_image(
     mask_item = await _read_image(mask_image, "mask_image") if mask_image else None
     mask_bytes = mask_item[0] if mask_item else None
     mask_suffix = mask_item[1] if mask_item else None
+    _validate_total_image_size([main_image_bytes, *reference_bytes, mask_bytes])
 
     # 参数归一化
     task_mode = _normalize_task_mode(task_mode)
+    output_resolution = _normalize_output_resolution(output_resolution)
     edit_metadata_str = _normalize_edit_metadata(edit_metadata, task_mode)
     enhanced_instruction = _build_instruction(task_mode, instruction, bool(mask_bytes))
 
@@ -123,6 +143,7 @@ async def edit_image(
         parent_result_index=parent_result_index,
         manual_provider=provider,
         output_count=output_count,
+        output_resolution=output_resolution,
         task_mode=task_mode,
         edit_metadata=edit_metadata_str,
         enhanced_instruction=enhanced_instruction,

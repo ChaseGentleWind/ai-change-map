@@ -56,7 +56,8 @@ class EditRequestSchema(BaseModel):
     parent_id: Optional[int] = Field(None, description="父记录 ID（迭代编辑用）")
     parent_result_index: int = Field(0, ge=0, description="父记录结果图索引")
     provider: Optional[str] = Field(None, description="手动指定 provider，不传走智能路由")
-    output_count: int = Field(1, ge=1, le=4, description="生成数量")
+    output_count: int = Field(1, ge=1, le=10, description="生成数量")
+    output_resolution: Optional[str] = Field(None, description="输出分辨率档位：1k/2k/4k")
 
 
 class EditResponseSchema(BaseModel):

@@ -28,7 +28,7 @@ OPENAI_BASE_URL = os.getenv(
     "OPENAI_BASE_URL",
     os.getenv("AINX_API_BASE", RELAY_API_BASE or "https://ainx.chat/v1"),
 )
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-image-2")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-image-2-1k")
 AINX_API_BASE = os.getenv("AINX_API_BASE", OPENAI_BASE_URL)
 AINX_API_KEY = os.getenv("AINX_API_KEY", OPENAI_API_KEY)
 YUNWU_API_BASE = os.getenv("YUNWU_API_BASE", "https://yunwu.ai/v1")
@@ -93,26 +93,51 @@ def load_providers_config() -> Dict[str, Any]:
                     "model": "gemini-2.5-flash-image",
                     "timeout": 60
                 },
-                "openai": {
+                "openai_1k": {
                     "enabled": True,
                     "api_base": OPENAI_BASE_URL,
                     "api_key": OPENAI_API_KEY,
-                    "model": OPENAI_MODEL,
-                    "timeout": 240
+                    "model": "gpt-image-2-1k",
+                    "request_mode": "image_edits",
+                    "resolution": "1k",
+                    "size": "original",
+                    "timeout": 600
+                },
+                "openai_pro4k": {
+                    "enabled": True,
+                    "api_base": OPENAI_BASE_URL,
+                    "api_key": OPENAI_API_KEY,
+                    "model": "gpt-image2-Pro4K",
+                    "request_mode": "image_edits",
+                    "default_resolution": "2k",
+                    "size": "original",
+                    "downgrade_4k_on_gateway_error": True,
+                    "timeout": 600
+                },
+                "openai_chat": {
+                    "enabled": True,
+                    "api_base": OPENAI_BASE_URL,
+                    "api_key": OPENAI_API_KEY,
+                    "model": "gpt-image-2",
+                    "request_mode": "chat_completions",
+                    "size": "original",
+                    "timeout": 600
                 }
             },
             "routing": {
-                "text_edit": "openai",
-                "watermark_remove": "openai",
-                "reference_edit": "openai",
-                "iterative_edit": "openai",
-                "default": "openai"
+                "text_edit": "openai_1k",
+                "watermark_remove": "openai_1k",
+                "reference_edit": "openai_1k",
+                "iterative_edit": "openai_1k",
+                "default": "openai_1k"
             },
             "fallback": {
                 "enabled": True,
                 "chain": {
-                    "gemini": ["openai"],
-                    "openai": ["gemini"]
+                    "gemini": ["openai_1k"],
+                    "openai_1k": ["openai_pro4k"],
+                    "openai_pro4k": ["openai_1k"],
+                    "openai_chat": ["gemini"]
                 },
                 "max_retries": 1
             },

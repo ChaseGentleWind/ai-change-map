@@ -40,6 +40,7 @@ class EditService:
         parent_result_index: int,
         manual_provider: Optional[str],
         output_count: int,
+        output_resolution: Optional[str],
         task_mode: str,
         edit_metadata: str,
         enhanced_instruction: str,
@@ -83,6 +84,7 @@ class EditService:
             self._validate_provider_capabilities(
                 selected_provider=selected_provider,
                 provider_config=provider_config,
+                task_mode=task_mode,
                 reference_count=len(reference_bytes),
                 has_mask=bool(mask_bytes),
                 output_count=output_count,
@@ -95,6 +97,7 @@ class EditService:
             reference_images=reference_bytes,
             mask=mask_bytes,
             output_count=output_count,
+            extra={"output_resolution": output_resolution} if output_resolution else {},
         )
         if parent_id:
             edit_request.history = await self._load_context(parent_id)
@@ -254,6 +257,7 @@ class EditService:
         *,
         selected_provider: str,
         provider_config: dict,
+        task_mode: str,
         reference_count: int,
         has_mask: bool,
         output_count: int,
@@ -276,6 +280,8 @@ class EditService:
         if reference_count > 0 and not capabilities.supports_multi_image:
             raise HTTPException(400, f"Provider '{selected_provider}' 不支持参考图")
         if has_mask and not capabilities.supports_mask:
+            if selected_provider.startswith("openai") and task_mode == "local_edit":
+                return
             raise HTTPException(400, f"Provider '{selected_provider}' 不支持局部 mask")
 
     async def _call_with_fallback(

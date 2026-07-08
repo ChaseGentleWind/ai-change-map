@@ -1,9 +1,11 @@
 """测试共享 fixtures"""
 import os
+from pathlib import Path
 
 # 在所有项目导入之前设置环境变量
+TEST_DB_PATH = Path(__file__).parent / "test.db"
 os.environ["JWT_SECRET_KEY"] = "test-only-secret-key-minimum-32-characters-x!"
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./tests/test.db"
+os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB_PATH.as_posix()}"
 os.environ["ADMIN_USERNAME"] = ""
 os.environ["ADMIN_PHONE"] = ""
 os.environ["ADMIN_PASSWORD"] = ""

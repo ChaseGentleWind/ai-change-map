@@ -1,4 +1,4 @@
-default_provider: openai
+default_provider: openai_1k
 
 providers:
   gemini:
@@ -8,14 +8,38 @@ providers:
     model: "gemini-2.5-flash-image"
     timeout: 60
 
-  openai:
+  openai_1k:
     enabled: true
     api_base: "${OPENAI_BASE_URL}"
     api_key: "${OPENAI_API_KEY}"
-    model: "${OPENAI_MODEL}"
+    # 稳定推荐：/images/edits multipart，上传图片字段为 image[]
+    model: "gpt-image-2-1k"
+    request_mode: image_edits
+    resolution: "1k"
+    size: "original"
+    timeout: 600
+
+  openai_pro4k:
+    enabled: true
+    api_base: "${OPENAI_BASE_URL}"
+    api_key: "${OPENAI_API_KEY}"
+    # 支持 1K/2K/4K；4K 遇到 502/503/504 时自动按 2K 重试
+    model: "gpt-image2-Pro4K"
+    request_mode: image_edits
+    default_resolution: "2k"
+    size: "original"
+    downgrade_4k_on_gateway_error: true
+    timeout: 600
+
+  openai_chat:
+    enabled: true
+    api_base: "${OPENAI_BASE_URL}"
+    api_key: "${OPENAI_API_KEY}"
+    # 仅 1K 生图，对话协议 /chat/completions
+    model: "gpt-image-2"
     request_mode: chat_completions
     size: "original"
-    timeout: 240
+    timeout: 600
 
   seededit:
     enabled: true
@@ -37,18 +61,22 @@ providers:
     model: "flux-kontext-pro"
 
 routing:
-  text_edit: openai
-  watermark_remove: openai
-  reference_edit: openai
-  iterative_edit: openai
-  default: openai
+  text_edit: openai_1k
+  watermark_remove: openai_1k
+  reference_edit: openai_1k
+  iterative_edit: openai_1k
+  default: openai_1k
 
 fallback:
   enabled: false
   chain:
     gemini:
-      - openai
-    openai:
+      - openai_1k
+    openai_1k:
+      - openai_pro4k
+    openai_pro4k:
+      - openai_1k
+    openai_chat:
       - gemini
   max_retries: 1
 

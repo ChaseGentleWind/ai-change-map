@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
     validate_startup_config()
     await init_db()
     await ensure_admin_account()
-    print("✅ 数据库初始化完成")
+    print("数据库初始化完成")
     yield
 
 

@@ -49,6 +49,9 @@ def _get_display_name(provider_name: str) -> str:
     display_names = {
         "gemini": "Gemini 2.5 Flash Image",
         "openai": "GPT-Image-2",
+        "openai_1k": "GPT-Image-2 1K 稳定编辑",
+        "openai_pro4k": "GPT-Image2 Pro 4K",
+        "openai_chat": "GPT-Image-2 对话 1K",
         "seededit": "SeedEdit 3.0 (豆包)",
         "tongyi": "通义万相",
         "flux": "FLUX.1 Kontext"
