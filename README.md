@@ -1,268 +1,362 @@
 # AI 图像编辑网站
 
-基于 Gemini / OpenAI 的图像编辑服务，支持参考图编辑、文字替换、去水印等功能。
+这是一个基于 FastAPI + Vue 3 的 AI 图像编辑网站。用户上传原图后，可以通过自然语言指令、参考图、局部涂抹 mask 或文字图层完成图像修改，并支持多轮会话、历史记录和管理员查看。
+
+## 当前能力
+
+- 用户注册、登录、JWT 鉴权、个人资料和密码修改
+- 主图上传、参考图上传、自然语言图像编辑
+- 通用编辑、局部涂抹编辑、文字图层合成三种工作流
+- 多轮编辑：可基于上一轮结果继续修改
+- 历史会话：按用户保存原图、结果图、指令、模型、耗时和成本估算
+- 管理后台：管理员可查看用户、用户历史、会话详情并删除会话
+- Provider 抽象层：支持 OpenAI 兼容图像接口、Gemini、SeedEdit 等 provider
+- 文件存储：上传文件在 `uploads/`，生成结果在 `outputs/`
 
 ## 技术栈
 
-**后端：**
-- FastAPI + Python 3.11+
-- SQLite + SQLAlchemy
-- Provider 抽象层（支持 Gemini / OpenAI / 通义万相 / FLUX 等）
+后端：
 
-**前端：**
-- Vue 3 + TypeScript
-- Vite + TailwindCSS
-- Vue Router + Axios
+- Python 3.11+
+- FastAPI
+- SQLAlchemy async + SQLite
+- httpx、Pillow、python-dotenv、PyYAML
 
-## 核心特性
+前端：
 
-- ✅ **Provider 抽象层** — 模型可插拔，配置文件驱动
-- ✅ **智能路由** — 根据任务类型自动选择最合适的模型
-- ✅ **多轮对话式编辑** — ChatGPT 风格，同一会话连续修改
-- ✅ **自动 Fallback** — 主模型失败时自动切换备用
-- ✅ **历史记录** — 服务器端 SQLite 存储
+- Vue 3
+- TypeScript
+- Vite
+- Tailwind CSS
+- Vue Router
+- Axios
 
-## 快速开始
+## 快速启动
 
-### 1. 后端启动
+### 一键启动开发环境
 
-```bash
-cd backend
+项目根目录已经支持双击启动：
 
-# 安装依赖
-pip install -r requirements.txt
-
-# 配置环境变量
-cp .env.example .env
-# 编辑 .env 文件，填入你的 API Key 和中转站地址
-
-# 启动服务
-python main.py
-# 或
-uvicorn main:app --reload --port 8001
+```text
+start-all.bat
 ```
 
-后端将运行在 `http://localhost:8001`
+双击后会自动调用 PowerShell 启动后端、前端和 ngrok，并在窗口里显示 ngrok 公网地址。地址会自动复制到剪贴板。
 
-API 文档：`http://localhost:8001/docs`
+停止服务时双击：
 
-### 2. 前端启动
+```text
+stop-all.bat
+```
 
-```bash
+也可以在命令行启动：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-all.ps1
+```
+
+脚本会启动：
+
+- 后端：`http://localhost:8001`
+- 前端：`http://localhost:5174`
+- ngrok：自动执行 `ngrok http 5174`
+
+脚本默认寻找项目根目录下的 `ngrok.exe`。如果你的 ngrok 放在其它位置，可以这样指定：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-all.ps1 -NgrokPath "D:\tools\ngrok.exe"
+```
+
+启动日志和 PID 文件会写入 `.runtime/`。
+
+### 手动启动后端
+
+```powershell
+cd backend
+
+# 首次使用时创建 .env
+copy .env.example .env
+
+# 推荐使用已有 .venv；如果没有，请先安装 pyproject.toml 中的依赖
+.\.venv\Scripts\python.exe main.py
+```
+
+后端默认运行在 `http://localhost:8001`，API 文档在：
+
+```text
+http://localhost:8001/docs
+```
+
+### 手动启动前端
+
+```powershell
 cd frontend
-
-# 安装依赖
 npm install
-
-# 启动开发服务器
 npm run dev
 ```
 
-前端将运行在 `http://localhost:5174`
+前端默认运行在：
 
-## 配置说明
+```text
+http://localhost:5174
+```
 
-### 环境变量 (.env)
+Vite 已配置代理：
+
+- `/api` -> `http://localhost:8001`
+- `/uploads` -> `http://localhost:8001`
+- `/outputs` -> `http://localhost:8001`
+
+## 环境变量
+
+后端读取 `backend/.env`。常用配置如下：
 
 ```env
-# API 中转站配置
-RELAY_API_BASE=https://your-relay-api.com/v1
-GEMINI_API_KEY=your_gemini_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
+# OpenAI 兼容中转站
+OPENAI_BASE_URL=https://ainx.chat/v1
+OPENAI_API_KEY=your_openai_compatible_api_key_here
+OPENAI_MODEL=gpt-image-2-1k
+
+# Gemini / SeedEdit 相关中转站
+YUNWU_API_BASE=https://yunwu.ai/v1
+YUNWU_GEMINI_API_BASE=https://yunwu.ai/v1beta
+YUNWU_API_KEY=your_yunwu_api_key_here
+
+# 兼容旧变量
+RELAY_API_BASE=https://ainx.chat/v1
+GEMINI_API_KEY=your_yunwu_api_key_here
+AINX_API_BASE=https://ainx.chat/v1
+AINX_API_KEY=your_ainx_api_key_here
 
 # 数据库
 DATABASE_URL=sqlite+aiosqlite:///./db/app.db
+
+# 服务端口
+PORT=8001
+
+# JWT，生产环境必须替换为长度 >= 32 的随机字符串
+JWT_SECRET_KEY=please_change_this_secret_in_production
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=10080
+
+# 自动创建/同步管理员账号
+ADMIN_USERNAME=superadmin
+ADMIN_PHONE=13900000000
+ADMIN_PASSWORD=please_change_admin_password
+
+# 额外管理员白名单
+ADMIN_USERNAMES=
+ADMIN_PHONES=
+
+# CORS 白名单
+CORS_ALLOWED_ORIGINS=http://localhost:5174
 ```
 
-### Providers 配置 (backend/config/providers.yaml)
+生成安全 JWT 密钥：
+
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+## Provider 配置
+
+Provider 配置位于 `backend/config/providers.yaml`。当前默认配置以 `openai_1k` 为主：
 
 ```yaml
-default_provider: openai
-
-providers:
-  gemini:
-    enabled: false
-    api_base: "${RELAY_API_BASE}"
-    api_key: "${GEMINI_API_KEY}"
-    model: "gemini-2.5-flash-image"
-    timeout: 60
-
-  openai:
-    enabled: true
-    api_base: "${RELAY_API_BASE}"
-    api_key: "${OPENAI_API_KEY}"
-    model: "gpt-image-2"
-    timeout: 60
+default_provider: openai_1k
 
 routing:
-  text_edit: openai
-  watermark_remove: openai
-  reference_edit: openai
-  iterative_edit: openai
-  default: openai
-  iterative_edit: gemini     # 多轮对话用 Gemini
-  default: gemini
+  text_edit: openai_1k
+  watermark_remove: openai_1k
+  reference_edit: openai_1k
+  iterative_edit: openai_1k
+  default: openai_1k
 
 fallback:
-  enabled: true
-  chain:
-    gemini: [openai]
-    openai: [gemini]
-  max_retries: 1
-
-session:
-  max_context_turns: 10
+  enabled: false
 ```
 
-## 使用示例
+当前已注册的 provider：
 
-### 1. 参考图编辑
+- `openai_1k`：GPT-Image-2 1K，走 `/images/edits`
+- `openai_pro4k`：GPT-Image2 Pro 4K，支持 1K/2K/4K 档位
+- `openai_chat`：GPT-Image-2，走 `/chat/completions`
+- `gemini`：Gemini 2.5 Flash Image
+- `seededit`：豆包 SeedEdit 3.0 i2i
 
-上传主图 + 参考图，输入指令：
-```
-把图1中的椅子换成图2中的款式，其他保持不变
-```
+新增 provider 的步骤：
 
-### 2. 文字替换
+1. 在 `backend/providers/` 下新增实现文件
+2. 继承 `ImageEditorProvider`
+3. 实现 `edit()` 和 `capabilities()`
+4. 使用 `@register("provider_name")` 注册
+5. 在 `backend/providers/__init__.py` 导入
+6. 在 `backend/config/providers.yaml` 添加配置
 
-上传海报图，输入指令：
-```
-把广告牌上的"促销"改成"特价"，保持原有字体和颜色
-```
+## 主要接口
 
-### 3. 去水印
+### 认证
 
-上传带水印的图片，输入指令：
-```
-去掉右下角的水印，保持背景纹理自然
-```
+- `POST /api/auth/register`：注册
+- `POST /api/auth/login`：登录
+- `GET /api/auth/me`：当前用户
+- `PUT /api/auth/me/profile`：修改资料
+- `PUT /api/auth/me/password`：修改密码
 
-### 4. 多轮迭代编辑
+### 图像编辑
 
-第一轮：`把椅子换成红色`
-第二轮：`再把墙刷成蓝色`
-第三轮：`加一盏台灯`
+`POST /api/edit`
 
-## 项目结构
+请求类型：`multipart/form-data`
 
-```
-ai-change-map/
-├── backend/
-│   ├── main.py                 # FastAPI 入口
-│   ├── config.py               # 配置加载
-│   ├── database.py             # 数据库连接
-│   ├── routers/                # API 路由
-│   │   ├── edit.py             # 编辑接口
-│   │   ├── history.py          # 历史记录
-│   │   └── providers.py        # Providers 信息
-│   ├── providers/              # Provider 抽象层
-│   │   ├── base.py             # 抽象基类
-│   │   ├── schemas.py          # 数据契约
-│   │   ├── registry.py         # 注册器
-│   │   ├── router.py           # 智能路由
-│   │   ├── gemini.py           # Gemini 实现
-│   │   └── openai.py           # OpenAI 实现
-│   ├── services/               # 业务服务
-│   │   └── storage.py          # 文件存储
-│   ├── models/                 # 数据模型
-│   │   ├── database.py         # ORM 模型
-│   │   └── schemas.py          # API 模型
-│   └── config/
-│       └── providers.yaml      # Providers 配置
-├── frontend/
-│   ├── src/
-│   │   ├── views/
-│   │   │   ├── Home.vue        # 主编辑页
-│   │   │   └── History.vue     # 历史记录页
-│   │   ├── api/
-│   │   │   └── index.ts        # API 调用
-│   │   ├── types/
-│   │   │   └── index.ts        # 类型定义
-│   │   └── router/
-│   │       └── index.ts        # 路由配置
-│   └── package.json
-├── uploads/                    # 上传图片
-├── outputs/                    # 生成结果
-└── README.md
-```
+字段：
 
-## API 接口
+- `main_image`：主图，必填
+- `instruction`：编辑指令，必填
+- `session_id`：会话 ID，可选
+- `parent_id`：父编辑记录 ID，可选
+- `parent_result_index`：继续编辑父记录的第几张结果图，默认 `0`
+- `provider`：手动指定 provider，可选
+- `output_count`：生成数量
+- `output_resolution`：输出分辨率档位，`1k` / `2k` / `4k`
+- `task_mode`：`general` / `local_edit` / `text_layer`
+- `edit_metadata`：前端编辑状态 JSON
+- `reference_images`：参考图，可多张
+- `mask_image`：局部编辑 mask
 
-### POST /api/edit
-图像编辑接口
+响应示例：
 
-**请求：** `multipart/form-data`
-- `main_image`: 主图文件
-- `instruction`: 编辑指令
-- `session_id`: 会话 ID（可选）
-- `parent_id`: 父记录 ID（可选）
-- `provider`: 手动指定 provider（可选）
-- `output_count`: 生成数量（默认 1）
-- `reference_images[]`: 参考图（可选）
-
-**响应：**
 ```json
 {
   "record_id": 123,
   "session_id": "uuid-xxx",
-  "provider": "gemini",
-  "model": "gemini-2.5-flash-image",
+  "provider": "openai_1k",
+  "model": "gpt-image-2-1k",
   "task_type": "reference_edit",
-  "results": ["/outputs/xxx_1.png"],
-  "usage": {...},
-  "cost": 0.039,
+  "fallback_used": null,
+  "results": ["/outputs/xxxx.png"],
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0
+  },
+  "cost": null,
   "duration_ms": 8200
 }
 ```
 
-### GET /api/providers
-获取可用 providers 列表
+### 历史记录
 
-### GET /api/history
-获取会话列表（分页）
+- `GET /api/history`：当前用户会话列表
+- `GET /api/history/{session_id}`：当前用户会话详情
+- `DELETE /api/history/{session_id}`：删除当前用户会话
 
-### GET /api/history/{session_id}
-获取单个会话详情
+### Providers
 
-### DELETE /api/history/{session_id}
-删除会话
+- `GET /api/providers`：可用 provider 列表和能力信息
 
-## 扩展新 Provider
+### 管理员
 
-1. 在 `backend/providers/` 下创建新文件，如 `tongyi.py`
-2. 继承 `ImageEditorProvider` 并实现 `edit()` 和 `capabilities()` 方法
-3. 使用 `@register("tongyi")` 装饰器注册
-4. 在 `providers.yaml` 中添加配置
-5. 在 `providers/__init__.py` 中导入
+- `GET /api/admin/users`：用户列表
+- `GET /api/admin/users/{user_id}`：用户详情
+- `PUT /api/admin/users/{user_id}`：修改用户
+- `GET /api/admin/users/{user_id}/history`：指定用户历史
+- `GET /api/admin/history/{session_id}`：任意会话详情
+- `DELETE /api/admin/history/{session_id}`：删除任意会话
 
-示例：
-```python
-from .base import ImageEditorProvider
-from .registry import register
+## 项目结构
 
-@register("tongyi")
-class TongyiProvider(ImageEditorProvider):
-    def capabilities(self):
-        return Capabilities(...)
+```text
+ai-change-map/
+├── backend/
+│   ├── main.py
+│   ├── config.py
+│   ├── database.py
+│   ├── auth.py
+│   ├── config/
+│   │   └── providers.yaml
+│   ├── models/
+│   │   ├── database.py
+│   │   └── schemas.py
+│   ├── providers/
+│   │   ├── base.py
+│   │   ├── schemas.py
+│   │   ├── registry.py
+│   │   ├── router.py
+│   │   ├── openai.py
+│   │   ├── gemini.py
+│   │   └── seededit.py
+│   ├── routers/
+│   │   ├── auth.py
+│   │   ├── admin.py
+│   │   ├── edit.py
+│   │   ├── history.py
+│   │   └── providers.py
+│   ├── services/
+│   │   ├── edit_service.py
+│   │   ├── history.py
+│   │   ├── storage.py
+│   │   └── admin_bootstrap.py
+│   └── tests/
+├── frontend/
+│   ├── src/
+│   │   ├── api/
+│   │   ├── components/
+│   │   ├── router/
+│   │   ├── stores/
+│   │   ├── types/
+│   │   └── views/
+│   ├── package.json
+│   └── vite.config.ts
+├── uploads/
+├── outputs/
+├── ngrok.exe
+├── start-all.bat
+├── start-all.ps1
+├── stop-all.bat
+└── README.md
+```
 
-    async def edit(self, request):
-        # 实现调用逻辑
-        ...
+## 测试
+
+后端测试：
+
+```powershell
+cd backend
+python -m pytest -q
+```
+
+前端构建：
+
+```powershell
+cd frontend
+npm run build
 ```
 
 ## 常见问题
 
-**Q: 如何切换默认模型？**
-A: 修改 `providers.yaml` 中的 `default_provider` 字段
+**启动时报 JWT_SECRET_KEY 不安全**
 
-**Q: 如何禁用某个 provider？**
-A: 在 `providers.yaml` 中将对应 provider 的 `enabled` 设为 `false`
+修改 `backend/.env` 中的 `JWT_SECRET_KEY`，使用长度大于等于 32 的随机字符串。
 
-**Q: 如何调整智能路由规则？**
-A: 修改 `providers.yaml` 中的 `routing` 部分，或在 `providers/router.py` 中调整关键词识别逻辑
+**ngrok 打开后页面提示 Host 不允许**
 
-**Q: 如何增加会话上下文轮数？**
-A: 修改 `providers.yaml` 中的 `session.max_context_turns` 值
+前端 `vite.config.ts` 已加入常见 ngrok 域名白名单。如果你使用固定自定义域名，也可以把域名加入 `server.allowedHosts`。
+
+**如何切换默认模型**
+
+修改 `backend/config/providers.yaml` 的 `default_provider` 和 `routing`。
+
+**如何启用 fallback**
+
+修改 `backend/config/providers.yaml`：
+
+```yaml
+fallback:
+  enabled: true
+```
+
+并确认 fallback 链中的 provider 都已配置 API Key 且 `enabled: true`。
 
 ## License
 

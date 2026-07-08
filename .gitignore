@@ -19,6 +19,7 @@ backend/db/*.db
 backend/db/*.db-shm
 backend/db/*.db-wal
 backend/tests/*.db
+data/
 
 # 上传和生成的图片
 uploads/
@@ -33,6 +34,7 @@ frontend/.vite/
 # 日志
 *.log
 logs/
+.runtime/
 
 # 系统文件
 .DS_Store
@@ -49,5 +51,13 @@ desktop.ini
 *.tmp
 *.temp
 .cache/
+
+# 本地调试和隧道工具
+ngrok.exe
+backend/body.txt
+backend/payload_test.json
+backend/resp.json
+backend/test_main.png
+backend/main_big.png
 
 CLAUDE.md

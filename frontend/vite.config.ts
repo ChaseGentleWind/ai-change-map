@@ -12,7 +12,12 @@ export default defineConfig({
   },
   server: {
     port: 5174,
-    allowedHosts: ['powwow-uncharted-uniformed.ngrok-free.dev'],
+    allowedHosts: [
+      'powwow-uncharted-uniformed.ngrok-free.dev',
+      '.ngrok-free.app',
+      '.ngrok-free.dev',
+      '.ngrok.io'
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:8001',
