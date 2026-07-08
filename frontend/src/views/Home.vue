@@ -5,7 +5,7 @@ import { editImage, getProviders, getSession } from '@/api'
 import ImageCanvasEditor from '@/components/ImageCanvasEditor.vue'
 import TaskModePanel from '@/components/TaskModePanel.vue'
 import TextLayerPanel from '@/components/TextLayerPanel.vue'
-import type { EditMetadata, ProviderInfo, EditRecord, TaskMode, TextLayer } from '@/types'
+import type { EditMetadata, ProviderInfo, EditRecord, TaskMode, TextLayer, OutputResolution } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,6 +18,7 @@ const referenceImagePreviews = ref<string[]>([])
 const instruction = ref('')
 const selectedProvider = ref<string>('')
 const outputCount = ref(1)
+const outputResolution = ref<OutputResolution>('2k')
 const taskMode = ref<TaskMode>('general')
 const textLayers = ref<TextLayer[]>([])
 const brushSize = ref(48)
@@ -73,10 +74,18 @@ const defaultProvider = ref('gemini')
 const providerMeta: Record<string, { tagline: string; desc: string; emoji: string }> = {
   gemini: { tagline: '多图 · 多轮', desc: '参考图替换、迭代编辑首选', emoji: '✦' },
   openai: { tagline: '文字最强', desc: '海报、广告牌文字渲染', emoji: 'A' },
+  openai_1k: { tagline: '稳定 1K', desc: '推荐，图生图编辑更稳', emoji: '1K' },
+  openai_pro4k: { tagline: '2K/4K', desc: '高分辨率，4K 会自动降级', emoji: '4K' },
+  openai_chat: { tagline: '对话 1K', desc: 'Chat 协议 1K 生图', emoji: 'C' },
   seededit: { tagline: '中文场景', desc: '中文海报、电商图优化', emoji: '中' },
   tongyi: { tagline: '通义万相', desc: '阿里图像编辑', emoji: '万' },
   flux: { tagline: '高保真', desc: 'FLUX Kontext 高质量', emoji: '⚡' }
 }
+const resolutionOptions: { value: OutputResolution; label: string }[] = [
+  { value: '1k', label: '1K' },
+  { value: '2k', label: '2K' },
+  { value: '4k', label: '4K' }
+]
 
 // 拖拽状态
 const isDragging = ref(false)
@@ -87,6 +96,7 @@ const canSubmit = computed(() => {
   const hasTextLayer = taskMode.value === 'text_layer' && textLayers.value.length > 0
   return mainImage.value && (hasInstruction || hasTextLayer) && !loading.value && !sessionLoading.value
 })
+const showResolutionSelector = computed(() => selectedProvider.value === 'openai_pro4k')
 
 // 加载 providers
 onMounted(async () => {
@@ -108,6 +118,12 @@ watch(
   },
   { immediate: true }
 )
+
+watch(selectedProvider, provider => {
+  if (provider !== 'openai_pro4k') {
+    outputResolution.value = '2k'
+  }
+})
 
 async function loadSessionDetail(id: string) {
   const token = ++sessionLoadToken
@@ -265,6 +281,7 @@ async function submitEdit() {
         editMetadata: metadata,
         provider: selectedProvider.value || undefined,
         outputCount: outputCount.value,
+        outputResolution: showResolutionSelector.value ? outputResolution.value : undefined,
         referenceImages: referenceImages.value.length > 0 ? referenceImages.value : undefined
       }
     )
@@ -666,6 +683,24 @@ function reset() {
 
             <!-- 提交栏：生成数量 + 提交按钮内联 -->
             <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div
+                v-if="showResolutionSelector"
+                class="flex w-full items-center gap-1 bg-white border border-line rounded-lg p-0.5 sm:w-auto"
+              >
+                <button
+                  v-for="item in resolutionOptions"
+                  :key="item.value"
+                  type="button"
+                  class="flex-1 px-2.5 py-1 text-[12px] rounded-md transition-colors sm:flex-none"
+                  :class="outputResolution === item.value
+                    ? 'bg-brand text-white font-medium'
+                    : 'text-ink-muted hover:text-ink'"
+                  @click="outputResolution = item.value"
+                >
+                  {{ item.label }}
+                </button>
+              </div>
+
               <div
                 v-if="taskMode !== 'text_layer'"
                 class="flex w-full items-center gap-1 bg-white border border-line rounded-lg p-0.5 sm:w-auto"

@@ -44,9 +44,11 @@ export interface EditRequest {
   task_mode?: TaskMode
   provider?: string
   output_count?: number
+  output_resolution?: OutputResolution
 }
 
 export type TaskMode = 'general' | 'local_edit' | 'text_layer'
+export type OutputResolution = 'auto' | '1k' | '2k' | '4k'
 
 export interface TextLayer {
   id: string

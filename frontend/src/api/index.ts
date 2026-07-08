@@ -24,7 +24,7 @@ const AUTH_TOKEN_KEY = 'ai_change_map_token'
 
 const api = axios.create({
   baseURL: '/',
-  timeout: 300000 // 5分钟，需大于后端 provider 的 240s 超时
+  timeout: 650000 // 10分钟以上，需大于后端 provider 的 600s 超时
 })
 
 // 请求拦截器
@@ -106,6 +106,7 @@ export async function editImage(
     editMetadata?: EditMetadata
     provider?: string
     outputCount?: number
+    outputResolution?: 'auto' | '1k' | '2k' | '4k'
     referenceImages?: File[]
   } = {}
 ): Promise<EditResponse> {
@@ -136,6 +137,9 @@ export async function editImage(
   }
   if (options.outputCount) {
     formData.append('output_count', String(options.outputCount))
+  }
+  if (options.outputResolution && options.outputResolution !== 'auto') {
+    formData.append('output_resolution', options.outputResolution)
   }
   if (options.referenceImages) {
     options.referenceImages.forEach(img => {
