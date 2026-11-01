@@ -1,5 +1,11 @@
-# Vue 3 + TypeScript + Vite
+# 前端开发说明
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+前端使用 Vue 3、TypeScript、Vite、Tailwind CSS 和 Axios。开发服务器默认运行在 `http://localhost:5174`，`/api` 由 Vite 代理到 `http://localhost:8001`。图片通过 `/api/assets/{id}` 从数据库读取。
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+```powershell
+npm ci
+npm run dev
+npm run build
+```
+
+页面入口位于 `src/views/`，通用编辑器组件位于 `src/components/`，API 请求统一封装在 `src/api/index.ts`。

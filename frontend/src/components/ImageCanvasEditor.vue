@@ -11,6 +11,7 @@ const props = defineProps<{
   maskFeather: number
   textTool: 'select' | 'erase'
   maskSrc?: string
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -345,6 +346,7 @@ function pointerPosition(event: PointerEvent) {
 }
 
 function beginDraw(event: PointerEvent) {
+  if (props.disabled || !imageReady.value) return
   if (props.taskMode === 'text_layer' && props.textTool === 'select') {
     beginTextInteraction(event)
     return
@@ -485,10 +487,10 @@ defineExpose({
 </script>
 
 <template>
-  <div class="rounded-card bg-white overflow-hidden border border-line">
+  <div class="canvas-stage rounded-card overflow-hidden border border-line">
     <canvas
       ref="canvasRef"
-      class="w-full block touch-none"
+      class="block touch-none"
       :class="taskMode === 'local_edit' ? 'cursor-crosshair' : ''"
       @pointerdown="beginDraw"
       @pointermove="drawTo"
@@ -497,3 +499,8 @@ defineExpose({
     />
   </div>
 </template>
+
+<style scoped>
+.canvas-stage { display: flex; align-items: center; justify-content: center; height: clamp(260px, 46vh, 440px); background: #f0f2f6; padding: 12px; }
+.canvas-stage canvas { width: auto; height: auto; max-width: 100%; max-height: 100%; }
+</style>

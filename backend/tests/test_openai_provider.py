@@ -215,6 +215,57 @@ async def test_pro4k_gateway_error_downgrades_4k_to_2k():
 
 
 @pytest.mark.asyncio
+async def test_configured_4k_model_gateway_error_downgrades_4k_to_2k():
+    """新加入的 4K 模型按配置开关执行网关错误降级。"""
+    _FakeAsyncClient.response_status_codes = [503, 200]
+    provider = OpenAIProvider({
+        "api_base": "http://relay.example/v1",
+        "api_key": "test-key",
+        "model": "gpt-image-2-4k-high",
+        "request_mode": "image_edits",
+        "default_resolution": "4k",
+        "size": "original",
+        "downgrade_4k_on_gateway_error": True,
+        "timeout": 30,
+    })
+    request = EditRequest(
+        main_image=_make_png(1920, 1080),
+        instruction="生成高分辨率版本",
+    )
+
+    await provider.edit(request)
+
+    assert [call["data"]["model"] for call in _FakeAsyncClient.calls] == [
+        "gpt-image-2-4k-high",
+        "gpt-image-2-4k-high",
+    ]
+    assert [call["data"]["size"] for call in _FakeAsyncClient.calls] == ["3584x2016", "2048x1136"]
+
+
+@pytest.mark.asyncio
+async def test_extra_payload_controls_optional_image_parameters():
+    """可通过 Provider 配置向上游追加 quality 等可选参数。"""
+    provider = OpenAIProvider({
+        "api_base": "http://relay.example/v1",
+        "api_key": "test-key",
+        "model": "gpt-image-2.5-sunburst-1k",
+        "request_mode": "image_edits",
+        "resolution": "1k",
+        "size": "original",
+        "extra_payload": {"quality": "high"},
+        "timeout": 30,
+    })
+    request = EditRequest(
+        main_image=_make_png(1920, 1080),
+        instruction="保持商品细节并修改背景",
+    )
+
+    await provider.edit(request)
+
+    assert _FakeAsyncClient.calls[0]["data"]["quality"] == "high"
+
+
+@pytest.mark.asyncio
 async def test_chat_completions_payload_includes_n_and_expected_fields():
     provider = OpenAIProvider({
         "api_base": "http://relay.example/v1",

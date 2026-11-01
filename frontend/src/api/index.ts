@@ -2,7 +2,6 @@
 import axios from 'axios'
 import type {
   EditResponse,
-  ProvidersListResponse,
   SessionListResponse,
   Session,
   EditMetadata,
@@ -17,7 +16,8 @@ import type {
   AdminUserDetail,
   AdminUserHistoryResponse,
   AdminUserListResponse,
-  User
+  User,
+  UsageSummary
 } from '@/types'
 
 const AUTH_TOKEN_KEY = 'ai_change_map_token'
@@ -104,10 +104,10 @@ export async function editImage(
     taskMode?: TaskMode
     maskImage?: File
     editMetadata?: EditMetadata
-    provider?: string
     outputCount?: number
-    outputResolution?: 'auto' | '1k' | '2k' | '4k'
     referenceImages?: File[]
+    provider?: string
+    outputResolution?: string
   } = {}
 ): Promise<EditResponse> {
   const formData = new FormData()
@@ -132,19 +132,19 @@ export async function editImage(
   if (options.editMetadata) {
     formData.append('edit_metadata', JSON.stringify(options.editMetadata))
   }
-  if (options.provider) {
-    formData.append('provider', options.provider)
-  }
   if (options.outputCount) {
     formData.append('output_count', String(options.outputCount))
-  }
-  if (options.outputResolution && options.outputResolution !== 'auto') {
-    formData.append('output_resolution', options.outputResolution)
   }
   if (options.referenceImages) {
     options.referenceImages.forEach(img => {
       formData.append('reference_images', img)
     })
+  }
+  if (options.provider) {
+    formData.append('provider', options.provider)
+  }
+  if (options.outputResolution) {
+    formData.append('output_resolution', options.outputResolution)
   }
 
   return api.post('/api/edit', formData, {
@@ -155,19 +155,16 @@ export async function editImage(
 }
 
 /**
- * 获取可用 providers 列表
- */
-export async function getProviders(): Promise<ProvidersListResponse> {
-  return api.get('/api/providers')
-}
-
-/**
  * 获取会话列表
  */
 export async function getSessions(page: number = 1, pageSize: number = 20): Promise<SessionListResponse> {
   return api.get('/api/history', {
     params: { page, page_size: pageSize }
   })
+}
+
+export async function getUsageSummary(period: 'today' | 'all' = 'today'): Promise<UsageSummary> {
+  return api.get('/api/usage', { params: { period } })
 }
 
 /**

@@ -1,75 +1,87 @@
-"""文件存储服务"""
+"""图片存储服务：上传图和生成图统一保存到数据库。"""
 import uuid
-import json
-from pathlib import Path
 from typing import List, Optional
-from config import UPLOAD_DIR, OUTPUT_DIR
+from mimetypes import guess_type
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from models.database import ImageAsset
+
+ASSET_URL_PREFIX = "/api/assets/"
 
 
-def save_upload(file_bytes: bytes, suffix: str = ".jpg") -> tuple[str, str]:
+def _content_type(suffix: str) -> str:
+    return guess_type(f"file{suffix}")[0] or "application/octet-stream"
+
+
+async def save_upload(
+    db: AsyncSession,
+    file_bytes: bytes,
+    suffix: str = ".jpg",
+    filename: Optional[str] = None,
+) -> tuple[str, str]:
     """
-    保存上传的图片
+    将上传图片保存到数据库。
 
     Returns:
-        (file_id, relative_url)
+        (asset_id, relative_url)
     """
-    file_id = str(uuid.uuid4())
-    filename = f"{file_id}{suffix}"
-    path = UPLOAD_DIR / filename
-    path.write_bytes(file_bytes)
-    return file_id, f"/uploads/{filename}"
+    asset_id = str(uuid.uuid4())
+    asset = ImageAsset(
+        id=asset_id,
+        filename=filename or f"{asset_id}{suffix}",
+        content_type=_content_type(suffix),
+        data=file_bytes,
+        size_bytes=len(file_bytes),
+    )
+    db.add(asset)
+    await db.flush()
+    return asset_id, f"{ASSET_URL_PREFIX}{asset_id}"
 
 
-def save_output(file_bytes: bytes, prefix: str = "result") -> str:
+async def save_output(db: AsyncSession, file_bytes: bytes, prefix: str = "result") -> str:
     """
-    保存生成的结果图
+    将生成结果保存到数据库。
 
     Returns:
         relative_url
     """
-    filename = f"{prefix}_{uuid.uuid4().hex[:8]}.png"
-    path = OUTPUT_DIR / filename
-    path.write_bytes(file_bytes)
-    return f"/outputs/{filename}"
+    _, url = await save_upload(db, file_bytes, ".png", f"{prefix}_{uuid.uuid4().hex[:8]}.png")
+    return url
 
 
-def save_outputs(images: List[bytes], prefix: str = "result") -> List[str]:
+async def save_outputs(db: AsyncSession, images: List[bytes], prefix: str = "result") -> List[str]:
     """批量保存结果图"""
-    return [save_output(img, prefix) for img in images]
+    return [await save_output(db, img, prefix) for img in images]
 
 
-def get_file_bytes(relative_url: str) -> Optional[bytes]:
+async def get_file_bytes(db: AsyncSession, relative_url: str) -> Optional[bytes]:
     """
     根据相对 URL 读取文件内容
 
     Args:
-        relative_url: 如 /uploads/xxx.jpg 或 /outputs/xxx.png
+        relative_url: 数据库资源 URL，如 /api/assets/xxx
 
     Returns:
         文件字节，不存在则返回 None
     """
-    if relative_url.startswith("/uploads/"):
-        path = UPLOAD_DIR / relative_url[len("/uploads/"):]
-    elif relative_url.startswith("/outputs/"):
-        path = OUTPUT_DIR / relative_url[len("/outputs/"):]
-    else:
-        return None
+    if relative_url.startswith(ASSET_URL_PREFIX):
+        asset_id = relative_url[len(ASSET_URL_PREFIX):].split("/", 1)[0]
+        result = await db.execute(select(ImageAsset).where(ImageAsset.id == asset_id))
+        asset = result.scalar_one_or_none()
+        return asset.data if asset else None
 
-    if path.exists():
-        return path.read_bytes()
     return None
 
 
-def delete_file(relative_url: str) -> bool:
-    """删除文件，返回是否成功"""
-    if relative_url.startswith("/uploads/"):
-        path = UPLOAD_DIR / relative_url[len("/uploads/"):]
-    elif relative_url.startswith("/outputs/"):
-        path = OUTPUT_DIR / relative_url[len("/outputs/"):]
-    else:
-        return False
-
-    if path.exists():
-        path.unlink()
+async def delete_file(db: AsyncSession, relative_url: str) -> bool:
+    """删除数据库中的图片资源。"""
+    if relative_url.startswith(ASSET_URL_PREFIX):
+        asset_id = relative_url[len(ASSET_URL_PREFIX):].split("/", 1)[0]
+        result = await db.execute(select(ImageAsset).where(ImageAsset.id == asset_id))
+        asset = result.scalar_one_or_none()
+        if not asset:
+            return False
+        await db.delete(asset)
         return True
+
     return False

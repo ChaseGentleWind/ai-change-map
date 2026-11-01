@@ -58,6 +58,23 @@ def test_total_upload_size_rejected():
     assert exc_info.value.status_code == 413
 
 
+def test_requested_provider_is_limited_to_enabled_image_providers():
+    """模型选择只能使用启用中的 OpenAI provider 白名单。"""
+    assert EditService._validate_requested_provider("openai_1k", "1k") == "openai_1k"
+
+    with pytest.raises(HTTPException) as unknown:
+        EditService._validate_requested_provider("not-a-model", "1k")
+    assert unknown.value.status_code == 400
+
+    with pytest.raises(HTTPException) as unlisted:
+        EditService._validate_requested_provider("openai_chat", "1k")
+    assert unlisted.value.status_code == 400
+
+    with pytest.raises(HTTPException) as unsupported_resolution:
+        EditService._validate_requested_provider("openai_1k", "4k")
+    assert unsupported_resolution.value.status_code == 400
+
+
 def test_openai_local_edit_allows_mask_input():
     """OpenAI 图像模型可把 mask 作为多图输入传给上游，能力校验不应失败。"""
     service = EditService.__new__(EditService)

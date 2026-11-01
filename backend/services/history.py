@@ -72,6 +72,7 @@ async def build_session_schema(
         result_urls = json.loads(record.result_urls) if record.result_urls else None
         edit_metadata = json.loads(record.edit_metadata) if record.edit_metadata else None
 
+        metadata_selection = (edit_metadata or {}).get("model_selection") or {}
         record_schemas.append(RecordSchema(
             id=record.id,
             session_id=record.session_id,
@@ -89,6 +90,7 @@ async def build_session_schema(
             status=record.status,
             error_message=record.error_message,
             cost=record.cost,
+            cost_currency=metadata_selection.get("currency"),
             duration_ms=record.duration_ms,
             created_at=record.created_at,
         ))
@@ -117,22 +119,22 @@ async def delete_session_with_files(
     records = records_result.scalars().all()
 
     for record in records:
-        delete_file(record.main_image_url)
+        await delete_file(db, record.main_image_url)
 
         if record.reference_urls:
             ref_urls = json.loads(record.reference_urls)
             for url in ref_urls:
-                delete_file(url)
+                await delete_file(db, url)
 
         if record.mask_url:
-            delete_file(record.mask_url)
+            await delete_file(db, record.mask_url)
 
         if record.result_urls:
             result_urls = json.loads(record.result_urls)
             for url in result_urls:
-                delete_file(url)
+                await delete_file(db, url)
 
         await db.delete(record)
 
-    delete_file(session.original_url)
+    await delete_file(db, session.original_url)
     await db.delete(session)

@@ -1,8 +1,4 @@
 """智能路由 — 根据任务类型选择最合适的 Provider"""
-import re
-from typing import Optional
-
-
 class TaskRouter:
     """任务路由器"""
 
@@ -56,8 +52,7 @@ class TaskRouter:
         self,
         instruction: str,
         has_reference_images: bool = False,
-        has_parent: bool = False,
-        manual_provider: Optional[str] = None
+        has_parent: bool = False
     ) -> tuple[str, str]:
         """
         选择 Provider
@@ -66,16 +61,9 @@ class TaskRouter:
             instruction: 用户指令
             has_reference_images: 是否有参考图
             has_parent: 是否是迭代编辑
-            manual_provider: 用户手动指定的 provider（优先级最高）
-
         Returns:
             (provider_name, task_type)
         """
-        # 手动指定优先
-        if manual_provider:
-            task_type = self.detect_task_type(instruction, has_reference_images, has_parent)
-            return manual_provider, task_type
-
         # 检测任务类型
         task_type = self.detect_task_type(instruction, has_reference_images, has_parent)
 

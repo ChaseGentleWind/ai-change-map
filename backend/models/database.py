@@ -1,5 +1,5 @@
 """ORM 数据库模型"""
-from sqlalchemy import Column, Index, Integer, String, Text, Float, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Index, Integer, String, Text, Float, DateTime, ForeignKey, Boolean, LargeBinary
 from sqlalchemy.sql import func
 from database import Base
 
@@ -62,7 +62,7 @@ class EditRecord(Base):
 
     # 统计
     token_usage = Column(Text, nullable=True)       # token 用量 JSON
-    cost = Column(Float, nullable=True)             # 估算成本（美元）
+    cost = Column(Float, nullable=True)             # 模型单价估算费用；新记录以人民币计价
     duration_ms = Column(Integer, nullable=True)    # 耗时毫秒
 
     created_at = Column(DateTime, server_default=func.now())
@@ -70,4 +70,20 @@ class EditRecord(Base):
     __table_args__ = (
         Index("ix_edit_records_session_created", "session_id", "created_at"),
         Index("ix_edit_records_user_created", "user_id", "created_at"),
+    )
+
+
+class ImageAsset(Base):
+    """图片二进制资源表，新上传和生成的图片统一存储在数据库中。"""
+    __tablename__ = "image_assets"
+
+    id = Column(String(36), primary_key=True)
+    filename = Column(String(255), nullable=True)
+    content_type = Column(String(100), nullable=False, default="application/octet-stream")
+    data = Column(LargeBinary, nullable=False)
+    size_bytes = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_image_assets_created", "created_at"),
     )

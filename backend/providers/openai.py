@@ -132,14 +132,12 @@ def _resolve_image_edit_size(request: EditRequest, config: dict, model: str) -> 
         or ""
     ).strip().lower()
 
-    if model == "gpt-image-2-1k":
+    tier = requested_tier or configured_tier
+    supported_tiers = config.get("supported_resolutions") or []
+    if supported_tiers and tier not in supported_tiers:
+        tier = configured_tier or supported_tiers[0]
+    if tier not in IMAGE_EDIT_SIZE_TIERS:
         tier = "1k"
-    elif model == "gpt-image2-Pro4K":
-        tier = requested_tier if requested_tier in IMAGE_EDIT_SIZE_TIERS else configured_tier
-        if tier not in IMAGE_EDIT_SIZE_TIERS:
-            tier = "2k"
-    else:
-        tier = requested_tier or configured_tier
 
     allowed_sizes = IMAGE_EDIT_SIZE_TIERS.get(tier, IMAGE_EDIT_SIZES)
     return _resolve_output_size(request.main_image, config.get("size"), allowed_sizes)
@@ -275,6 +273,14 @@ def _console_log(message: str) -> None:
         print(message.encode(encoding, errors="replace").decode(encoding))
 
 
+@register("openai_sunburst_1k")
+@register("openai_4k_high")
+@register("openai_flare_1k")
+@register("openai_reverse_1k")
+@register("openai_reverse_4k")
+@register("openai_4k")
+@register("openai_flare_4k_max")
+@register("openai_sunburst_4k_max")
 @register("openai_chat")
 @register("openai_pro4k")
 @register("openai_1k")
@@ -365,7 +371,6 @@ class OpenAIProvider(ImageEditorProvider):
             response = await client.post(url, headers=headers, data=data, files=files)
             if (
                 response.status_code in {502, 503, 504}
-                and self.model == "gpt-image2-Pro4K"
                 and _is_4k_size(output_size)
                 and self.config.get("downgrade_4k_on_gateway_error", True)
             ):
@@ -381,6 +386,7 @@ class OpenAIProvider(ImageEditorProvider):
             raise Exception("OpenAI API 未返回图片数据")
 
         usage = _extract_usage(result)
+        result["_request_size"] = data["size"]
         return EditResponse(images=images, usage=usage, provider="openai", model=self.model, raw_response=result)
 
     async def _edit_with_image_generations(self, request: EditRequest) -> EditResponse:
@@ -476,6 +482,7 @@ class OpenAIProvider(ImageEditorProvider):
             raise Exception("OpenAI API 未返回图片数据")
 
         usage = _extract_usage(result)
+        result["_request_size"] = payload["size"]
 
         return EditResponse(
             images=images,

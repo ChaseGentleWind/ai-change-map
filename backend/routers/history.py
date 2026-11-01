@@ -10,8 +10,24 @@ from models.schemas import (
     SessionSchema,
 )
 from services.history import build_session_list_item, build_session_schema, delete_session_with_files
+from services.usage import summarize_usage
 
 router = APIRouter(prefix="/api", tags=["历史记录"])
+
+
+@router.get("/usage")
+async def get_usage_summary(
+    period: str = Query("today", pattern="^(today|all)$"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取当前用户今日或累计图片费用，按北京时间统计。"""
+    result = await db.execute(
+        select(EditRecord)
+        .where(EditRecord.user_id == current_user.id, EditRecord.status == "completed")
+        .order_by(EditRecord.created_at.desc())
+    )
+    return summarize_usage(result.scalars().all(), period)
 
 
 @router.get("/history", response_model=SessionListSchema)

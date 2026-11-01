@@ -1,12 +1,15 @@
 """FastAPI 主入口"""
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import init_db
-from routers import admin, auth as auth_router, edit, history, providers
-from config import UPLOAD_DIR, OUTPUT_DIR, CORS_ALLOWED_ORIGINS, validate_startup_config
+from database import get_db, init_db
+from models.database import ImageAsset
+from routers import admin, auth as auth_router, edit, history
+from config import CORS_ALLOWED_ORIGINS, validate_startup_config
 from services.admin_bootstrap import ensure_admin_account
 
 
@@ -41,12 +44,6 @@ app.include_router(auth_router.router)
 app.include_router(admin.router)
 app.include_router(edit.router)
 app.include_router(history.router)
-app.include_router(providers.router)
-
-# 静态文件服务
-app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
-app.mount("/outputs", StaticFiles(directory=str(OUTPUT_DIR)), name="outputs")
-
 
 @app.get("/")
 async def root():
@@ -62,6 +59,23 @@ async def root():
 async def health():
     """健康检查"""
     return {"status": "ok"}
+
+
+@app.get("/api/assets/{asset_id}", include_in_schema=False)
+async def get_image_asset(
+    asset_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """从数据库返回图片资源，供页面的 img 标签直接读取。"""
+    result = await db.execute(select(ImageAsset).where(ImageAsset.id == asset_id))
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(404, "图片资源不存在")
+    return Response(
+        content=asset.data,
+        media_type=asset.content_type,
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
 
 
 if __name__ == "__main__":

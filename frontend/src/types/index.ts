@@ -42,13 +42,12 @@ export interface EditRequest {
   parent_id?: number
   parent_result_index?: number
   task_mode?: TaskMode
-  provider?: string
   output_count?: number
-  output_resolution?: OutputResolution
+    provider?: string
+    output_resolution?: string
 }
 
 export type TaskMode = 'general' | 'local_edit' | 'text_layer'
-export type OutputResolution = 'auto' | '1k' | '2k' | '4k'
 
 export interface TextLayer {
   id: string
@@ -62,6 +61,12 @@ export interface TextLayer {
 export interface EditMetadata {
   task_mode: TaskMode
   text_layers?: TextLayer[]
+  model_selection?: {
+    provider: string
+    model: string
+    resolution?: string
+    price_per_image?: number
+  }
   mask?: {
     brushSize: number
     feather: number
@@ -82,28 +87,8 @@ export interface EditResponse {
     total_tokens: number
   }
   cost?: number
+  cost_currency?: string
   duration_ms: number
-}
-
-export interface ProviderCapabilities {
-  supports_multi_image: boolean
-  supports_mask: boolean
-  supports_chat: boolean
-  max_input_size_mb: number
-  max_output_count: number
-}
-
-export interface ProviderInfo {
-  name: string
-  model: string
-  display_name: string
-  enabled: boolean
-  capabilities: ProviderCapabilities
-}
-
-export interface ProvidersListResponse {
-  default: string
-  providers: ProviderInfo[]
 }
 
 export interface EditRecord {
@@ -123,6 +108,7 @@ export interface EditRecord {
   status: string
   error_message?: string
   cost?: number
+  cost_currency?: string
   duration_ms?: number
   created_at: string
 }
@@ -151,6 +137,19 @@ export interface SessionListResponse {
   page: number
   page_size: number
   items: SessionListItem[]
+}
+
+export interface UsageSummary {
+  period: 'today' | 'all'
+  currency: 'CNY'
+  cost: number
+  image_count: number
+  models: Array<{
+    model: string
+    image_count: number
+    unit_price: number
+    cost: number
+  }>
 }
 
 export interface AdminUserListItem {

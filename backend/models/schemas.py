@@ -55,9 +55,7 @@ class EditRequestSchema(BaseModel):
     session_id: Optional[str] = Field(None, description="会话 ID，不传则创建新会话")
     parent_id: Optional[int] = Field(None, description="父记录 ID（迭代编辑用）")
     parent_result_index: int = Field(0, ge=0, description="父记录结果图索引")
-    provider: Optional[str] = Field(None, description="手动指定 provider，不传走智能路由")
     output_count: int = Field(1, ge=1, le=10, description="生成数量")
-    output_resolution: Optional[str] = Field(None, description="输出分辨率档位：1k/2k/4k")
 
 
 class EditResponseSchema(BaseModel):
@@ -71,31 +69,8 @@ class EditResponseSchema(BaseModel):
     results: List[str]
     usage: Dict[str, int]
     cost: Optional[float] = None
+    cost_currency: Optional[str] = None
     duration_ms: int
-
-
-class ProviderCapabilitiesSchema(BaseModel):
-    """Provider 能力"""
-    supports_multi_image: bool
-    supports_mask: bool
-    supports_chat: bool
-    max_input_size_mb: int
-    max_output_count: int
-
-
-class ProviderInfoSchema(BaseModel):
-    """Provider 信息"""
-    name: str
-    model: str
-    display_name: str
-    enabled: bool
-    capabilities: ProviderCapabilitiesSchema
-
-
-class ProvidersListSchema(BaseModel):
-    """Provider 列表响应"""
-    default: str
-    providers: List[ProviderInfoSchema]
 
 
 class RecordSchema(BaseModel):
@@ -116,6 +91,7 @@ class RecordSchema(BaseModel):
     status: str
     error_message: Optional[str]
     cost: Optional[float]
+    cost_currency: Optional[str] = None
     duration_ms: Optional[int]
     created_at: datetime
 

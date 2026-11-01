@@ -11,8 +11,7 @@ const emit = defineEmits<{
 
 const modes: Array<{ value: TaskMode; label: string; desc: string }> = [
   { value: 'general', label: '通用编辑', desc: '整图理解和常规修改' },
-  { value: 'local_edit', label: '局部修改', desc: '先涂抹区域再让 AI 修改' },
-  { value: 'text_layer', label: '修改文字', desc: '用可控文字图层合成' }
+  { value: 'local_edit', label: '局部修改', desc: '先涂抹区域再让 AI 修改' }
 ]
 </script>
 
@@ -23,7 +22,7 @@ const modes: Array<{ value: TaskMode; label: string; desc: string }> = [
       <span class="text-[12px] text-ink-faint">先选择工作流</span>
     </div>
 
-    <div class="grid grid-cols-3 gap-1.5 sm:gap-2">
+    <div class="grid grid-cols-2 gap-1.5 sm:gap-2">
       <button
         v-for="mode in modes"
         :key="mode.value"

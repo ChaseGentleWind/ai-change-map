@@ -3,11 +3,11 @@ import pytest
 from providers.router import TaskRouter
 
 _ROUTING = {
-    "text_edit": "openai",
-    "watermark_remove": "openai",
-    "reference_edit": "openai",
-    "iterative_edit": "openai",
-    "default": "openai",
+    "text_edit": "openai_1k",
+    "watermark_remove": "openai_1k",
+    "reference_edit": "openai_1k",
+    "iterative_edit": "openai_1k",
+    "default": "openai_1k",
 }
 
 
@@ -37,13 +37,8 @@ def test_parent_beats_reference(router):
 
 def test_select_provider_returns_config_value(router):
     provider, task_type = router.select_provider("修改背景颜色")
-    assert provider == "openai"
+    assert provider == "openai_1k"
     assert task_type == "default"
-
-
-def test_manual_provider_overrides_routing(router):
-    provider, _ = router.select_provider("修改背景颜色", manual_provider="gemini")
-    assert provider == "gemini"
 
 
 def test_missing_task_key_falls_back_to_default(router):

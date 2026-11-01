@@ -58,15 +58,6 @@ def _normalize_task_mode(task_mode: str) -> str:
     return task_mode
 
 
-def _normalize_output_resolution(output_resolution: Optional[str]) -> Optional[str]:
-    if not output_resolution or output_resolution == "auto":
-        return None
-    value = output_resolution.lower()
-    if value not in {"1k", "2k", "4k"}:
-        raise HTTPException(400, "不支持的输出分辨率")
-    return value
-
-
 def _normalize_edit_metadata(edit_metadata: Optional[str], task_mode: str) -> str:
     if not edit_metadata:
         return json.dumps({"task_mode": task_mode}, ensure_ascii=False)
@@ -100,10 +91,10 @@ async def edit_image(
     session_id: Optional[str] = Form(None, description="会话 ID"),
     parent_id: Optional[int] = Form(None, description="父记录 ID"),
     parent_result_index: int = Form(0, description="父记录结果图索引"),
-    provider: Optional[str] = Form(None, description="手动指定 provider"),
     output_count: int = Form(1, ge=1, description="生成数量"),
-    output_resolution: Optional[str] = Form(None, description="输出分辨率档位：1k/2k/4k"),
     task_mode: str = Form("general", description="任务模式"),
+    provider: Optional[str] = Form(None, description="用户选择的模型 provider"),
+    output_resolution: Optional[str] = Form(None, description="输出分辨率档位"),
     edit_metadata: Optional[str] = Form(None, description="前端编辑状态 JSON"),
     reference_images: List[UploadFile] = File(default=[], description="参考图"),
     mask_image: Optional[UploadFile] = File(None, description="局部编辑 mask"),
@@ -125,7 +116,6 @@ async def edit_image(
 
     # 参数归一化
     task_mode = _normalize_task_mode(task_mode)
-    output_resolution = _normalize_output_resolution(output_resolution)
     edit_metadata_str = _normalize_edit_metadata(edit_metadata, task_mode)
     enhanced_instruction = _build_instruction(task_mode, instruction, bool(mask_bytes))
 
@@ -141,10 +131,10 @@ async def edit_image(
         session_id=session_id,
         parent_id=parent_id,
         parent_result_index=parent_result_index,
-        manual_provider=provider,
         output_count=output_count,
-        output_resolution=output_resolution,
         task_mode=task_mode,
+        requested_provider=provider,
+        output_resolution=output_resolution,
         edit_metadata=edit_metadata_str,
         enhanced_instruction=enhanced_instruction,
     )

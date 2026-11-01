@@ -4,6 +4,10 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import text
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+# database.py 在 config.py 之前被 main.py 导入，因此这里也要主动读取 .env。
+load_dotenv(Path(__file__).with_name(".env"))
 
 # 确保 db 目录存在
 db_dir = Path(__file__).parent / "db"

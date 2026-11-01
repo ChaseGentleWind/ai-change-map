@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ai-change-map-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_change_map
+      POSTGRES_USER: ai_change_map
+      POSTGRES_PASSWORD: local_dev_only
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - ai_change_map_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_change_map -d ai_change_map"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  ai_change_map_db:

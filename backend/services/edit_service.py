@@ -38,12 +38,12 @@ class EditService:
         session_id: Optional[str],
         parent_id: Optional[int],
         parent_result_index: int,
-        manual_provider: Optional[str],
         output_count: int,
-        output_resolution: Optional[str],
         task_mode: str,
         edit_metadata: str,
         enhanced_instruction: str,
+        requested_provider: Optional[str] = None,
+        output_resolution: Optional[str] = None,
     ) -> EditResponseSchema:
         start_time = time.time()
 
@@ -55,12 +55,15 @@ class EditService:
             main_image_suffix = ".png"
 
         # 2. 持久化上传文件
-        _, main_url = save_upload(main_image_bytes, main_image_suffix)
+        _, main_url = await save_upload(self.db, main_image_bytes, main_image_suffix)
         ref_urls = [
-            save_upload(ref, suffix)[1]
+            (await save_upload(self.db, ref, suffix))[1]
             for ref, suffix in zip(reference_bytes, reference_suffixes)
         ]
-        mask_url = save_upload(mask_bytes, mask_suffix or ".png")[1] if mask_bytes else None
+        mask_url = (
+            (await save_upload(self.db, mask_bytes, mask_suffix or ".png"))[1]
+            if mask_bytes else None
+        )
 
         # 3. 创建或获取会话
         session = await self._get_or_create_session(user, session_id, main_url, instruction)
@@ -71,10 +74,22 @@ class EditService:
             instruction=enhanced_instruction,
             has_reference_images=bool(reference_bytes),
             has_parent=parent_id is not None,
-            manual_provider=manual_provider,
         )
+        if requested_provider:
+            selected_provider = self._validate_requested_provider(requested_provider, output_resolution)
         if task_mode != "general":
             task_type = task_mode
+
+        if requested_provider and task_mode != "text_layer":
+            selection_config = PROVIDERS_CONFIG["providers"][selected_provider]
+            metadata = json.loads(edit_metadata)
+            metadata["model_selection"] = {
+                "provider": selected_provider,
+                "model": selection_config["model"],
+                "resolution": output_resolution or selection_config.get("resolution") or selection_config.get("default_resolution"),
+                "price_per_image": selection_config.get("price_per_image"),
+            }
+            edit_metadata = json.dumps(metadata, ensure_ascii=False)
 
         # 5. 验证 provider 可用（text_layer 在本地处理，跳过检查）
         provider_config = PROVIDERS_CONFIG["providers"].get(selected_provider)
@@ -111,10 +126,30 @@ class EditService:
         result_images = response.images[:output_count]
         if not result_images:
             raise HTTPException(500, "模型未返回可用图片")
-        result_urls = save_outputs(result_images, prefix=session.id[:8])
+        result_urls = await save_outputs(self.db, result_images, prefix=session.id[:8])
 
         duration_ms = int((time.time() - start_time) * 1000)
-        cost = response.usage.total_tokens * 0.00003 if response.usage.total_tokens > 0 else None
+        response_config = next(
+            (item for item in PROVIDERS_CONFIG["providers"].values() if item.get("model") == response.model),
+            provider_config or {},
+        )
+        unit_price = response_config.get("price_per_image")
+        if task_mode == "text_layer":
+            unit_price = 0
+        cost = round(float(unit_price) * len(result_images), 4) if unit_price is not None else None
+        actual_resolution = self._resolution_from_size(response.raw_response.get("_request_size"))
+        metadata = json.loads(edit_metadata)
+        selection = metadata.setdefault("model_selection", {})
+        selection.update({
+            "provider": selected_provider,
+            "model": response.model,
+            "resolution": actual_resolution or output_resolution or selection.get("resolution"),
+            "price_per_image": unit_price,
+            "output_count": len(result_images),
+            "currency": "CNY",
+            "total_cost_cny": cost,
+        })
+        edit_metadata = json.dumps(metadata, ensure_ascii=False)
 
         # 9. 写入编辑记录
         record = EditRecord(
@@ -158,8 +193,40 @@ class EditService:
                 "total_tokens": response.usage.total_tokens,
             },
             cost=cost,
+            cost_currency="CNY" if cost is not None else None,
             duration_ms=duration_ms,
         )
+
+    @staticmethod
+    def _validate_requested_provider(provider_name: str, output_resolution: Optional[str]) -> str:
+        """校验前端模型选择，只允许已启用的 OpenAI 图像配置。"""
+        provider_name = provider_name.strip()
+        config = PROVIDERS_CONFIG.get("providers", {}).get(provider_name)
+        picker_providers = PROVIDERS_CONFIG.get("image_model_picker", {}).get("providers", [])
+        if provider_name not in picker_providers or not config or not config.get("enabled") or not config.get("model"):
+            raise HTTPException(400, "所选模型不可用")
+        if not provider_name.startswith("openai_"):
+            raise HTTPException(400, "所选模型不支持图像编辑")
+        supported = config.get("supported_resolutions") or []
+        if output_resolution and supported and output_resolution not in supported:
+            raise HTTPException(400, "所选模型不支持该分辨率")
+        return provider_name
+
+    @staticmethod
+    def _resolution_from_size(size: Optional[str]) -> Optional[str]:
+        """根据最终请求尺寸识别实际分辨率档位。"""
+        if not size or "x" not in size.lower():
+            return None
+        try:
+            width, height = (int(value) for value in size.lower().split("x", 1))
+        except ValueError:
+            return None
+        longest_edge = max(width, height)
+        if longest_edge >= 2560:
+            return "4k"
+        if longest_edge >= 1600:
+            return "2k"
+        return "1k"
 
     # ──────────────────────────────────────────────────────────────
     # 私有辅助方法
@@ -196,7 +263,7 @@ class EditService:
         if parent_result_index < 0 or parent_result_index >= len(urls):
             raise HTTPException(400, "父记录结果图索引超出范围")
 
-        image_bytes = get_file_bytes(urls[parent_result_index])
+        image_bytes = await get_file_bytes(self.db, urls[parent_result_index])
         if not image_bytes:
             raise HTTPException(404, "父记录的结果图文件不存在")
         return image_bytes
@@ -245,7 +312,7 @@ class EditService:
             result_urls = json.loads(record.result_urls or "[]")
             turns.append({
                 "instruction": record.instruction,
-                "result_image": get_file_bytes(result_urls[0]) if result_urls else None,
+                "result_image": await get_file_bytes(self.db, result_urls[0]) if result_urls else None,
             })
             current_id = record.parent_id
 
